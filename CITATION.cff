@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite both the article and this software archive."
+title: "Replication package: Level Breaks and Finite-Sample GLS Detrending"
+authors:
+  - family-names: "Gonçalves Silva"
+    given-names: "Ricardo"
+version: 1.0.0
+date-released: 2026-07-06
+license: MIT
+keywords:
+  - "unit root tests"
+  - "structural breaks"
+  - "GLS detrending"
+  - "purchasing power parity"
+  - "half-life"
+  - "finite-sample calibration"
+# doi: 10.5281/zenodo.XXXXXXX   # <-- fill after the Zenodo release (see README)
+preferred-citation:
+  type: article
+  title: "Level Breaks and Finite-Sample GLS Detrending: The Point-Optimal Unit Root Test and the Purchasing Power Parity Puzzle"
+  authors:
+    - family-names: "Gonçalves Silva"
+      given-names: "Ricardo"
+  year: 2026
+  # journal: "Empirical Economics"     # <-- fill on acceptance
+  # doi: 10.xxxx/xxxxx                  # <-- article DOI on acceptance

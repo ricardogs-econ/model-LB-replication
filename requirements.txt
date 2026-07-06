@@ -1,13 +1,8 @@
-joblib==1.5.3
-llvmlite==0.47.0
-numba==0.65.1
-numpy==2.4.6
-packaging==26.2
-pandas==3.0.3
-patsy==1.0.2
-python-dateutil==2.9.0.post0
-PyYAML==6.0.3
-scipy==1.18.0
-six==1.17.0
-statsmodels==0.14.6
-tzdata==2026.2
+# Replication package -- Python dependencies (tested with Python 3.12).
+# Pin these for exact reproduction; newer minor versions are expected to work.
+numpy>=1.26,<3
+scipy>=1.11          # replicate_section6.py (sweep): Brown-Forsythe F p-value
+numba>=0.59          # JIT kernels in mlb_core.py (compiled once, cached)
+matplotlib>=3.7      # figures (Sections 4 and 6)
+joblib>=1.3          # parallel Monte Carlo (calibration and robustness)
+# No pandas / openpyxl required: all I/O is via the csv standard library.

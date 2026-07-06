@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 ricardogs-econ
+Copyright (c) 2026 Ricardo Gonçalves Silva
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +19,11 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---------------------------------------------------------------------------
+Data notice. The source code above is released under the MIT License. The
+bundled data files are derived from public sources under their own terms of
+use: BIS bilateral US-dollar exchange rates (WS_XRU, https://data.bis.org) and
+World Bank Consumer Price Index (FP.CPI.TOTL, https://data.worldbank.org).
+Redistribution of the derived data is subject to attribution of those sources;
+see the "Data sources" section of README.md.

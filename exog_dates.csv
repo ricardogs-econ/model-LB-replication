@@ -1,0 +1,12 @@
+currency,break_year,event_type,source
+GBP,1985,systemic,Plaza Accord 22 Sep 1985 (G-5)
+GBP,1992,idiosyncratic,ERM exit "Black Wednesday" 16 Sep 1992 (BoE)
+SEK,1985,systemic,Plaza Accord 22 Sep 1985 (G-5)
+SEK,1992,idiosyncratic,Krona float 19 Nov 1992 (Riksbank)
+NOK,1985,systemic,Plaza Accord 22 Sep 1985 (G-5)
+NOK,1992,idiosyncratic,Krone float Dec 1992 (Norges Bank)
+AUD,1983,idiosyncratic,AUD float 12 Dec 1983 (RBA; dominates Plaza |delta|/sigma=5.06)
+NZD,1985,idiosyncratic,NZD float 4 Mar 1985 + Plaza (combined in annual data; RBNZ)
+JPY,1985,systemic,Plaza Accord 22 Sep 1985 (G-5)
+CAD,1985,systemic,Plaza Accord 22 Sep 1985 (G-5)
+CHF,1985,systemic,Plaza Accord 22 Sep 1985 (G-5)

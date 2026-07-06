@@ -1,0 +1,14 @@
+{
+  "title": "Replication package: Level Breaks and Finite-Sample GLS Detrending",
+  "description": "Replication code and public data for the paper 'Level Breaks and Finite-Sample GLS Detrending: The Point-Optimal Unit Root Test and the Purchasing Power Parity Puzzle'. One numerical kernel (mlb_core.py), one driver per section (3-4 calibration, 5 robustness, 6 PPP application), and a stand-alone tool to apply the Model LB test to any series.",
+  "license": {"id": "MIT"},
+  "upload_type": "software",
+  "keywords": [
+    "unit root tests", "structural breaks", "GLS detrending",
+    "purchasing power parity", "half-life", "finite-sample calibration",
+    "Monte Carlo", "sieve bootstrap", "wild bootstrap"
+  ],
+  "creators": [
+    {"name": "Gonçalves Silva, Ricardo", "affiliation": "Independent researcher, São Carlos, Brazil"}
+  ]
+}

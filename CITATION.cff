@@ -4,7 +4,7 @@ title: "Replication package: Level Breaks and Finite-Sample GLS Detrending"
 authors:
   - family-names: "Gonçalves Silva"
     given-names: "Ricardo"
-version: 1.0.0
+version: 1.0.1
 date-released: 2026-07-06
 license: MIT
 keywords:
@@ -14,7 +14,7 @@ keywords:
   - "purchasing power parity"
   - "half-life"
   - "finite-sample calibration"
-# doi: 10.5281/zenodo.XXXXXXX   # <-- fill after the Zenodo release (see README)
+doi: 10.5281/zenodo.21229774
 preferred-citation:
   type: article
   title: "Level Breaks and Finite-Sample GLS Detrending: The Point-Optimal Unit Root Test and the Purchasing Power Parity Puzzle"

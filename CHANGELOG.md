@@ -9,7 +9,8 @@ follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 
 Repository hygiene release: no numerical result changes. Every figure, table,
 and calibrated value is identical to v1.0.1; only file names, symbol names, and
-documentation were standardized for public reproducibility.
+documentation were standardized for public reproducibility. Archived on Zenodo
+(version DOI `10.5281/zenodo.21231381`).
 
 ### Changed
 - **File names standardized** (internal version suffixes removed):

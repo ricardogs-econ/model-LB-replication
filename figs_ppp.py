@@ -8,7 +8,7 @@
 #   the SAME window as the test (start_year onward), so the displayed
 #   deterministic matches the one the test detrends against.
 #
-# [v2.1] upper limits mapped by the includes-one flags (not alpha_ci_hi);
+# upper limits mapped by the includes-one flags (not alpha_ci_hi);
 #        xmax=80 so the largest finite upper (CAD, 69y) renders uncapped.
 # Figure 2 (fig_hl_forest.pdf): forest plot of the 95% Hansen grid-t bootstrap
 #   half-life confidence intervals, constant-mean (MP) vs exogenous-level-break

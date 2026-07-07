@@ -1,41 +1,43 @@
 """
-validacao_tab4_fig2.py
-======================
-Validação tamanho/poder para a Tabela 4 (tab:power) e a Figura 2 (fig:power) do
-short_paper.tex.
+size_power_cbar_comparison.py
+=============================
+Size and power comparison of three c-bar specifications for the Model 1
+(constant + level dummies) point-optimal unit-root test. Produces the power
+table and power-curve figure of the paper's robustness section.
 
-Compara TRÊS especificações de c̄ para o teste MZt do MODELO 1 (constante + 2
-level dummies DU), em T=60, m=2, α=0.05:
+Compares THREE c-bar specifications for the MZt test of MODEL 1 (constant + 2
+level dummies DU), at T=60, m=2, alpha=0.05:
 
-    1. "Calibrated Model 1"  — superfície calibrada deste artigo (Tabela 1, const)
-    2. "Linear break-count"  — escala linear ad hoc da constante ERS pela contagem
-                               de quebras (−7,−13,−17,−20 para m=0,1,2,3)
-    3. "Trend-break surface" — superfície de resposta do CKP (Modelo 3, tendência
-                               quebrada), reaproveitada indevidamente. Vem de
-                               the trend-break response surface c_bar_rs, INLINED below (no external dependency).
+    1. "Calibrated Model 1"  -- the calibrated surface of this paper (const).
+    2. "Linear break-count"  -- ad hoc linear scaling of the ERS constant by the
+                                break count (-7,-13,-17,-20 for m=0,1,2,3).
+    3. "Trend-break surface" -- the CKP response surface (Model 3, broken trend),
+                                deliberately misapplied. Uses the trend-break
+                                response surface c_bar_rs, INLINED below (no
+                                external dependency).
 
-Os três usam o MESMO teste (detrending Model 1 com os DU nas datas conhecidas e a
-estatística MZt) — só muda o VALOR de c̄. Cada c̄ recebe seu próprio valor crítico
-(percentil 5% da nula c=0), como faria um praticante usando aquele c̄.
+All three use the SAME test (Model 1 detrending with the DU at the known dates
+and the MZt statistic) -- only the VALUE of c-bar changes. Each c-bar gets its
+own critical value (5% percentile of the null c=0), as a practitioner using
+that c-bar would.
 
-DGPs (colunas da Tabela 4):
-    (i)   TAMANHO, sem quebras : I(1) puro (c=0), θ=0; teste com 2 DU.
-    (ii)  TAMANHO, com quebras : I(1) (c=0) com 2 level breaks (θ≠0); teste com 2 DU.
-          [por invariância do detrending GLS deve coincidir com (i) — checagem]
-    (iii) PODER, broken mean   : I(0) (c=C_ALT<0) em torno de média quebrada (θ≠0).
+DGPs (table columns):
+    (i)   SIZE, no breaks   : pure I(1) (c=0), theta=0; tested with 2 DU.
+    (ii)  SIZE, with breaks : I(1) (c=0) with 2 level breaks (theta!=0); 2 DU.
+          [by GLS-detrending invariance must match (i) -- a consistency check]
+    (iii) POWER, broken mean: I(0) (c=C_ALT<0) around a broken mean (theta!=0).
 
-O motor numérico é IMPORTADO de cbar_ml1_final_production_v2.py, garantindo que a
-validação use exatamente as mesmas primitivas (build_z, _glsd, MZt) da calibração.
+The numerical engine is IMPORTED from mlb_core.py, so the validation uses
+exactly the same primitives (build_z, GLS detrending, MZt) as the calibration.
 
-SAÍDAS:
-    - imprime a Tabela 4 (taxas de rejeição ± erro de Monte Carlo)
-    - escreve tab_power.tex (corpo da Tabela 4)
-    - gera fig_power.pdf / .png (curvas de poder, Figura 2)
+OUTPUTS:
+    - prints the power table (rejection rates +/- Monte Carlo error)
+    - writes tab_power.tex (the table body)
+    - generates fig_power.pdf / .png (power curves)
 
-USO:
-    python validacao_tab4_fig2.py            # produção
-    python validacao_tab4_fig2.py --speed    # teste rápido (R pequeno)
-# (dependency-free: c_bar_rs is inlined above)
+USAGE:
+    python size_power_cbar_comparison.py            # production
+    python size_power_cbar_comparison.py --speed    # fast test (small R)
 """
 from __future__ import annotations
 import os, sys, argparse, warnings
@@ -43,25 +45,19 @@ import numpy as np
 
 warnings.filterwarnings("ignore")
 
-# motor Model 1 (mesmas primitivas da calibração v6) ------------------------
-# --- v6 compatibility adapter -------------------------------------------
-# The calibration kernel is now mlb_core, whose public
-# primitives are numba functions with a different signature from the v2/v3
-# API this script was written against. Rather than import obsolete symbols,
-# we build thin wrappers that reproduce the v2/v3 call semantics EXACTLY on
-# top of the v6 primitives, so tab:power and fig:power share the SAME v6
-# kernel used everywhere else in the paper.
+# Model 1 engine (same primitives as the calibration) ----------------------
+# --- kernel adapter ------------------------------------------------------
+# The calibration kernel is mlb_core, whose public primitives are numba
+# functions. We build thin local wrappers around them so this script shares
+# the SAME kernel used everywhere else in the paper:
 #
-#   v2/v3  build_z(nt, break_pos)                       -> v6 build_z_nb
-#   v2/v3  compute_M_statistics(y, break_pos, cbar,     -> v6 mstats_nb(y, Z,
-#             sigma2_method='const', kmax=12)                 cbar, code, kmax)
-#   v2/v3  gerar_dgp(T, lambdas, c, seed, beta_scale)   -> v6 gen_dgp_nb(nt,
-#                                                          break_pos, c, bscale, eps)
+#   build_z(nt, break_pos)                    -> build_z_nb
+#   compute_M_statistics(y, break_pos, cbar)  -> mstats_nb(y, Z, cbar, code, kmax)
+#   generate_dgp(T, lambdas, c, seed, beta)   -> gen_dgp_nb(nt, break_pos, c, beta, eps)
 #
-# Conventions preserved: kmax=12 (v6 fixed); sigma2_method string -> v6 int
-# code via _METHOD_CODE; break positions from lambdas via the v6 helper;
-# N(0,1) innovations drawn with a seeded default_rng so a given (seed) maps
-# to a reproducible draw exactly as gerar_dgp did.
+# Conventions: kmax=12; sigma2_method string -> int code via _METHOD_CODE;
+# break positions from lambdas via the kernel helper; N(0,1) innovations drawn
+# with a seeded default_rng so a given seed maps to a reproducible draw.
 import numpy as _np
 import mlb_core as _v6
 
@@ -88,8 +84,8 @@ _CBAR_PARAM = np.array([
 
 def _xreg_cbar(lam5):
     """
-    Constrói o vetor de regressores para c_bar_rs (61 elementos).
-    lam5: array (5,) de break fractions, zeros para slots não usados.
+    Build the regressor vector for c_bar_rs (61 elements).
+    lam5: array (5,) of break fractions, zeros for unused slots.
     Fiel ao Gauss linhas 809-815.
     """
     L = lam5
@@ -112,8 +108,8 @@ def _xreg_cbar(lam5):
 def c_bar_rs(break_pos, T):
     """
     c̄ via surface de resposta (Gauss: c_bar_rs).
-    break_pos: lista de posições (1-based) das quebras.
-    T: tamanho da amostra.
+    break_pos: list of (1-based) break positions.
+    T: sample size.
     """
     lam5 = np.zeros(5)
     for k, bp in enumerate(break_pos[:5]):
@@ -137,15 +133,15 @@ def compute_M_statistics(y, break_pos, cbar, sigma2_method='const',
     mza, msb, mzt, pt, mpt, ok = _v6.mstats_nb(
         _np.ascontiguousarray(y, dtype=_np.float64), Z,
         float(cbar), code, int(kmax))
-    # v2/v3 returned a dict indexed by the lowercase statistic key used in
+    # the kernel returns a tuple; we index into it by statistic name used in
     # stat_sample (stat='mzt', 'pt', ...); expose both cases for safety.
     return {'mza': mza, 'msb': msb, 'mzt': mzt, 'pt': pt, 'mpt': mpt,
             'MZa': mza, 'MSB': msb, 'MZt': mzt, 'PT': pt, 'MPT': mpt,
             'ok': ok}
 
-def gerar_dgp(T, lambdas, c, seed, beta_scale=0.0):
+def generate_dgp(T, lambdas, c, seed, beta_scale=0.0):
     # lambdas (break fractions in (0,1)) -> integer break positions, the
-    # same mapping the v6 calibration uses.
+    # same mapping the calibration uses.
     break_pos = _v6.break_pos_from_lambdas(int(T), tuple(lambdas))
     rng = _np.random.default_rng(int(seed))
     eps = rng.standard_normal(int(T))
@@ -153,7 +149,7 @@ def gerar_dgp(T, lambdas, c, seed, beta_scale=0.0):
                        float(c), float(beta_scale), eps)
     return y, break_pos
 # --- end adapter ---------------------------------------------------------
-# superfície trend-break do CKP (Modelo 3) -----------------------------------
+# CKP trend-break surface (Model 3) ------------------------------------------
 
 
 try:
@@ -163,19 +159,19 @@ except Exception:
     _HAS_JOBLIB = False
 
 # =============================================================================
-# CONFIGURAÇÃO
+# CONFIGURATION
 # =============================================================================
 T        = 60
-LAM      = (1.0/3.0, 2.0/3.0)                       # frações das 2 quebras
+LAM      = (1.0/3.0, 2.0/3.0)                       # fractions of the 2 breaks
 BREAK_POS = [int(np.floor(l * T)) for l in LAM]     # [20, 40]
 ALPHA    = 0.05
 SEED0    = 12345
 BETA     = 5.0                                       # magnitude θ dos saltos (a
-                                                     # estatística é invariante a θ;
+                                                     # statistic is invariant to theta;
                                                      # mantemos ≠0 por realismo)
-C_ALT    = -10.0                                     # alternativa I(0) da coluna (iii)
+C_ALT    = -10.0                                     # I(0) alternative of column (iii)
                                                      # (raiz AR ≈ 1−10/60 ≈ 0.83)
-C_GRID   = list(np.round(np.arange(0.0, -30.01, -2.0), 1))   # alternativas (Fig 2)
+C_GRID   = list(np.round(np.arange(0.0, -30.01, -2.0), 1))   # alternatives (power curve)
 CBAR_GRID = list(np.round(np.arange(-20.0, -2.9, 0.5), 2))   # grade p/ recalibrar c̄
 
 DEF = dict(R_cv=6000, R_table=6000, R_curve=2500, R_calib_cv=3000, R_calib_pow=3000)
@@ -183,22 +179,22 @@ SPD = dict(R_cv=300,  R_table=300,  R_curve=150,  R_calib_cv=300,  R_calib_pow=3
 
 
 # =============================================================================
-# AMOSTRADOR DE ESTATÍSTICA (MZt por padrão; PT para a tangência ERS)
+# STATISTIC SAMPLER (MZt by default; PT for the ERS tangency)
 # =============================================================================
 def stat_sample(cbar, c, n, seed, stat='mzt', beta=BETA, lambdas=LAM):
-    """n sorteios da estatística `stat` sob parâmetro local c, com as 2 quebras de
-    nível (magnitude beta), testadas em Model 1 nas datas BREAK_POS com o c̄ dado."""
+    """n draws of statistic `stat` under local parameter c, with the 2 breaks of
+    level (magnitude beta), tested in Model 1 at the BREAK_POS com o c̄ dado."""
     out = np.empty(n)
     for i in range(n):
-        y, _ = gerar_dgp(T, lambdas, c, seed + i, beta_scale=beta)
+        y, _ = generate_dgp(T, lambdas, c, seed + i, beta_scale=beta)
         s = compute_M_statistics(y, BREAK_POS, cbar, 'const')
         out[i] = s[stat] if s else np.nan
     return out[np.isfinite(out)]
 
 
 def cv5(cbar, n, seed, stat='mzt'):
-    """Valor crítico 5%: percentil 5 de `stat` sob a nula (c=0), com quebras presentes.
-    (Todas as estatísticas M/PT rejeitam para valores pequenos → cauda inferior.)"""
+    """5% critical value: 5th percentile of `stat` under the null (c=0), with breaks present.
+    (All M/PT statistics reject for small valuenos → cauda inferior.)"""
     null = stat_sample(cbar, 0.0, n, seed, stat=stat, beta=BETA, lambdas=LAM)
     return float(np.percentile(null, 100.0 * ALPHA))
 
@@ -211,13 +207,13 @@ def rej_rate(cbar, c, cvval, n, seed, stat='mzt', beta=BETA, lambdas=LAM):
 
 
 # =============================================================================
-# RECÁLCULO DO c̄ CALIBRADO (tangência ERS) — checagem self-contained
+# RECOMPUTE THE CALIBRATED c-bar (ERS tangency) -- self-contained check
 # =============================================================================
 def calibrate_cbar(R_cv, R_pow):
-    """Reproduz o critério de tangência ERS para (T=60, m=2, LAM): c̄* é o valor onde o
-    teste POINT-OPTIMAL (PT) atinge poder 0.5 contra a alternativa c=c̄ — exatamente o
-    critério usado na calibração da superfície. Deve recuperar ≈ −8.7 (Tabela 1, const).
-    Nota: a tangência é definida sobre PT, não MZt; usar MZt daria um c̄ diferente."""
+    """Reproduce the ERS tangency criterion for (T=60, m=2, LAM): c-bar* is the value where the
+    POINT-OPTIMAL (PT) test attains power 0.5 against the alternative c=c-bar -- exactly the
+    criterion used in the surface calibration. Should recover ~ -8.7 (const).
+    Note: the tangency is defined on PT, not MZt; using MZt would give a different c-bar."""
     best_c, best_gap = None, 1e9
     for cb in CBAR_GRID:
         cvv = cv5(cb, R_cv, SEED0 + 101, stat='pt')
@@ -232,29 +228,29 @@ def calibrate_cbar(R_cv, R_pow):
 # MAIN
 # =============================================================================
 def main():
-    ap = argparse.ArgumentParser(description="Validação Tabela 4 / Figura 2")
-    ap.add_argument("--speed", action="store_true", help="teste rápido (R pequeno)")
+    ap = argparse.ArgumentParser(description="Size/power comparison of c-bar specifications")
+    ap.add_argument("--speed", action="store_true", help="fast test (small R)")
     ap.add_argument("--jobs", type=int, default=-1)
     ap.add_argument("--recalib", action="store_true",
-                    help="recalcular c̄ por tangência PT (default: usar -8.7 da Tabela 1)")
+                    help="recompute c-bar via PT tangency (default: use -8.7)")
     ap.add_argument("--outdir", default=".")
     args = ap.parse_args()
     R = SPD if args.speed else DEF
     os.makedirs(args.outdir, exist_ok=True)
 
     print("=" * 74)
-    print(f"VALIDAÇÃO Tabela 4 / Figura 2 — T={T}, m=2, quebras={BREAK_POS}, α={ALPHA}")
+    print(f"SIZE/POWER COMPARISON -- T={T}, m=2, breaks={BREAK_POS}, alpha={ALPHA}")
     print(f"R: {R}")
     print("=" * 74)
 
-    # ---- c̄ calibrado (Model 1) --------------------------------------------
+    # ---- calibrated c-bar (Model 1) ---------------------------------------
     if args.recalib:
         cbar_calib = calibrate_cbar(R['R_calib_cv'], R['R_calib_pow'])
-        print(f"[c̄ calibrado] recalculado por tangência PT: {cbar_calib}  (Tabela 1: -8.7)")
+        print(f"[calibrated c-bar] recomputed via PT tangency: {cbar_calib}  (reference: -8.7)")
     else:
         cbar_calib = -8.7
-        print(f"[c̄ calibrado] valor da Tabela 1 (const, T=60, m=2): {cbar_calib}"
-              f"  [use --recalib para recalcular por tangência PT]")
+        print(f"[calibrated c-bar] reference value (const, T=60, m=2): {cbar_calib}"
+              f"  [use --recalib to recompute via PT tangency]")
 
     cbar_tb = round(c_bar_rs(BREAK_POS, T), 2)
     CBAR = {
@@ -262,30 +258,30 @@ def main():
         "Linear break-count":  -17.0,
         "Trend-break surface": float(cbar_tb),
     }
-    print("\n[Especificações de c̄ em (T=60, m=2)]")
+    print("\n[c-bar specifications at (T=60, m=2)]")
     for k, v in CBAR.items():
-        print(f"   {k:24s}: c̄ = {v:+.2f}")
+        print(f"   {k:24s}: c-bar = {v:+.2f}")
 
-    # ---- valores críticos 5% por c̄ ----------------------------------------
+    # ---- 5% critical values per c-bar -------------------------------------
     CV = {k: cv5(v, R['R_cv'], SEED0 + 11 + i) for i, (k, v) in enumerate(CBAR.items())}
-    print("\n[Valores críticos MZt 5% (nula c=0)]")
+    print("\n[MZt 5% critical values (null c=0)]")
     for k in CBAR:
         print(f"   {k:24s}: CV = {CV[k]:.3f}")
 
-    # ---- Tabela 4: (i) tamanho s/quebras, (ii) tamanho c/quebras, (iii) poder
-    print("\n[Tabela 4] taxas de rejeição (erro de Monte Carlo entre parênteses)")
+    # ---- table: (i) size no breaks, (ii) size with breaks, (iii) power
+    print("\n[Table] rejection rates (Monte Carlo error in parentheses)")
     hdr = f"{'c̄ specification':24s} {'(i) I(1) no breaks':>20s} {'(ii) I(1)+breaks':>18s} {f'(iii) I(0) c={C_ALT:.0f}':>16s}"
     print(hdr); print("-" * len(hdr))
     table = {}
     for i, (name, cb) in enumerate(CBAR.items()):
-        s0 = rej_rate(cb, 0.0,  CV[name], R['R_table'], SEED0 + 31 + i, beta=0.0,  lambdas=())   # (i) sem quebras
-        s1 = rej_rate(cb, 0.0,  CV[name], R['R_table'], SEED0 + 41 + i, beta=BETA, lambdas=LAM)  # (ii) com quebras
-        pw = rej_rate(cb, C_ALT, CV[name], R['R_table'], SEED0 + 51 + i, beta=BETA, lambdas=LAM) # (iii) poder
+        s0 = rej_rate(cb, 0.0,  CV[name], R['R_table'], SEED0 + 31 + i, beta=0.0,  lambdas=())   # (i) no breaks
+        s1 = rej_rate(cb, 0.0,  CV[name], R['R_table'], SEED0 + 41 + i, beta=BETA, lambdas=LAM)  # (ii) with breaks
+        pw = rej_rate(cb, C_ALT, CV[name], R['R_table'], SEED0 + 51 + i, beta=BETA, lambdas=LAM) # (iii) power
         table[name] = (s0, s1, pw)
         print(f"{name:24s} {s0[0]:.3f} ({s0[1]:.3f})   {s1[0]:.3f} ({s1[1]:.3f})   {pw[0]:.3f} ({pw[1]:.3f})")
 
-    # ---- curvas de poder (Figura 2) ----------------------------------------
-    print("\n[Figura 2] curvas de poder sobre c ...")
+    # ---- power curves ------------------------------------------------------
+    print("\n[Figure] power curves over c ...")
     def one_point(name, cb, c, seed):
         p, _ = rej_rate(cb, c, CV[name], R['R_curve'], seed)
         return (name, c, p)
@@ -299,7 +295,7 @@ def main():
     for name, c, p in res:
         curve[name][c] = p
 
-    # ---- LaTeX (corpo da Tabela 4) -----------------------------------------
+    # ---- LaTeX (table body) ------------------------------------------------
     def cell(t): return f"${t[0]:.3f}$ \\tiny$(\\pm{t[1]:.3f})$"
     rows = []
     label = {"Calibrated Model 1": "Calibrated Model~1 $\\bar c(m,T)$",
@@ -318,7 +314,7 @@ def main():
         f.write(tex)
     print("\n[escrito] tab_power.tex")
 
-    # ---- Figura 2 -----------------------------------------------------------
+    # ---- power curve figure -------------------------------------------------
     try:
         import matplotlib
         matplotlib.use("Agg")
@@ -366,9 +362,9 @@ def main():
         fig.savefig(os.path.join(args.outdir, "fig_power.png"), dpi=160, bbox_inches="tight")
         print("[escrito] fig_power.pdf / fig_power.png")
     except Exception as e:
-        print(f"[aviso] figura não gerada: {e}")
+        print(f"[warning] figure not generated: {e}")
 
-    print("\nConcluído.")
+    print("\nDone.")
 
 
 if __name__ == "__main__":

@@ -40,8 +40,8 @@ INPUT DEPENDENCY
     --calib PATH.
 
 REQUIRES
-    mlb_core.py, ppp_sweep_bis.py, boot_ppp_cbar_production_v2.py,
-    hl_median_unbiased.py, figs_ppp_v2.py in the same directory;
+    mlb_core.py, ppp_sweep_bis.py, boot_ppp_cbar.py,
+    hl_median_unbiased.py, figs_ppp.py in the same directory;
     numpy, scipy (sweep), numba, matplotlib (figures).
 ================================================================================
 """
@@ -76,7 +76,7 @@ def main():
             print("[note] cbar_surface.csv not found; run replicate_section3_4.py "
                   "first, or pass --calib PATH. Proceeding with the script's "
                   "internal default c-bar path.")
-        _run("boot_ppp_cbar_production_v2", rest if rest else ["--empirical"])
+        _run("boot_ppp_cbar", rest if rest else ["--empirical"])
 
     def do_hl():
         print("\n===== Section 6: median-unbiased half-lives =====")
@@ -87,7 +87,7 @@ def main():
     def do_fig():
         print("\n===== Section 6: figures =====")
         argv = rest if rest else ["--data-dir", ".", "--out-dir", "."]
-        _run("figs_ppp_v2", argv)
+        _run("figs_ppp", argv)
 
     if args.stage == "sweep":
         do_sweep()

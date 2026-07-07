@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 ================================================================================
-robustness_v6.py  --  Unified robustness suite for the Model LB c-bar calibration
+robustness.py  --  Unified robustness suite for the Model LB c-bar calibration
 ================================================================================
 
 This single script reproduces ALL THREE robustness experiments reported in the
@@ -41,32 +41,32 @@ Model LB ("Level Breaks and GLS Detrending") paper, each as a subcommand:
 WHY UNIFIED
 -----------
 The three analyses shared a single engine and were previously three loose
-scripts on TWO DIFFERENT, partly OBSOLETE production APIs (v2/v3 exposed
-`build_z`, `_glsd`, `compute_M_statistics`, `gerar_dgp`; v5/v6 renamed these to
+scripts on TWO DIFFERENT, an earlier production API (which exposed
+`build_z`, `_glsd`, `compute_M_statistics`, `generate_dgp`; later renamed to
 `build_z_nb`, `glsd_nb`, `mstats_nb`, `gen_dgp_nb` with different signatures).
 Only the AR(1) script had been migrated. This file:
-  * imports the VALIDATED kernels from the production module (v6, falling back to
-    v5 -- the kernels are identical) and NEVER reimplements them;
+  * imports the VALIDATED kernels from the production module (mlb_core, falling back to
+    the pure-Python kernel -- identical) and NEVER reimplements them;
   * drives all three experiments through the SAME production DGP `gen_dgp_nb`
     (u_t = (1 + c/T) u_{t-1} + eps_t) and the SAME P_T statistic, so the three
     experiments are mutually consistent and consistent with the calibration;
   * reads the anchor c-bar* from the production CSV
-    (resultados_cbar_ml1_v5.csv), so the m=0 anchors automatically inherit the
-    v6 seed-averaged surface -- no hard-coded, stale c-bar table.
+    (cbar_surface.csv), so the m=0 anchors automatically inherit the
+    the seed-averaged surface -- no hard-coded, stale c-bar table.
 
 A journal replication package is then just three modular files:
     mlb_core.py   (calibration -> CSV + tables + figure)
     mlb_core.py                       (the Model LB test kernel; reads the CSV)
-    robustness_v6.py                  (this file; all robustness objects)
+    robustness.py                  (this file; all robustness objects)
 
 USAGE
 -----
-    python3 robustness_v6.py all                    # everything, production reps
-    python3 robustness_v6.py ar1  --recalibrate     # AR(1) size/power + recal
-    python3 robustness_v6.py oracle
-    python3 robustness_v6.py trimming
-    python3 robustness_v6.py all --quick            # fast smoke test of all three
-    python3 robustness_v6.py --selftest             # pure-logic tests (no numba)
+    python3 robustness.py all                    # everything, production reps
+    python3 robustness.py ar1  --recalibrate     # AR(1) size/power + recal
+    python3 robustness.py oracle
+    python3 robustness.py trimming
+    python3 robustness.py all --quick            # fast smoke test of all three
+    python3 robustness.py --selftest             # pure-logic tests (no numba)
 
 Place this file in the same folder as mlb_core.py.
 ================================================================================
@@ -83,7 +83,7 @@ import importlib
 import numpy as np
 
 # ------------------------------------------------------------------------------
-# Production kernels (import; never reimplement). v6 preferred; v5 identical.
+# Production kernels (import; never reimplement). numba kernel required.
 # ------------------------------------------------------------------------------
 _PROD_CANDIDATES = ["mlb_core", "cbar_ml1_final_production_v5"]
 
@@ -99,7 +99,7 @@ def _load_prod(module_name=None):
             continue
     raise ImportError(
         "Could not import the production module "
-        f"({', '.join(n for n in names if n)}). Place robustness_v6.py in the "
+        f"({', '.join(n for n in names if n)}). Place robustness.py in the "
         "same folder as mlb_core.py.")
 
 
@@ -116,7 +116,7 @@ except Exception:
 TARGET_POWER = 0.50
 TRIM         = 0.15
 ALPHA        = 0.05
-CSV_DEFAULT  = os.path.join("checkpoints_cbar_ml1_v5", "resultados_cbar_ml1_v5.csv")
+CSV_DEFAULT  = os.path.join("cbar_checkpoints", "cbar_surface.csv")
 
 # Bound module-level kernel handles once _load_prod runs (set in _bind_kernels).
 _K = {}          # name -> callable/const
@@ -129,7 +129,7 @@ def _bind_kernels(prod):
     _K['build_z_nb']           = prod.build_z_nb
     _K['glsd_nb']              = prod.glsd_nb
     _K['break_pos_from_lambdas'] = prod.break_pos_from_lambdas
-    _K['gerar_lambdas']        = prod.gerar_lambdas
+    _K['make_lambdas']        = prod.make_lambdas
     _K['warm_up_numba']        = prod.warm_up_numba
     _K['_METHOD_CODE']         = prod._METHOD_CODE
     _K['KMAX']                 = prod.DEFAULTS['kmax']
@@ -684,7 +684,7 @@ def run_trimming(args, outdir):
     tasks, meta = [], {}
     for ci, (m, T) in enumerate(cells):
         for ei, eps in enumerate(eps_list):
-            lams = [tuple(l) for l in _K['gerar_lambdas'](m, eps, cfg['MIN_SPACING'],
+            lams = [tuple(l) for l in _K['make_lambdas'](m, eps, cfg['MIN_SPACING'],
                                                           n_grid=cfg['N_GRID']) if len(l) == m]
             if len(lams) > kmaxlam:
                 idx = np.linspace(0, len(lams) - 1, kmaxlam).round().astype(int)
@@ -793,7 +793,7 @@ def run_trimming(args, outdir):
 # figuras_v6.py: this experiment produces DATA (power_comparison.csv), which
 # figuras_v6.fig_power then consumes -- restoring the data/figure boundary a
 # replication package requires.  The original tab:power script was lost; this is
-# the authoritative regeneration on the validated v6 kernel.
+# the authoritative regeneration on the validated the numba kernel.
 #
 # Columns:
 #   (i)   I(1), no breaks (size)          : c=0,      beta=0
@@ -914,7 +914,7 @@ def run_power(args, outdir):
     # ---- write tab_power.tex (manuscript schema) ----
     tex_path = os.path.join(outdir, "tab_power.tex")
     with open(tex_path, "w") as f:
-        f.write("% auto-generated by robustness_v6.run_power (v6 kernel) -- "
+        f.write("% auto-generated by robustness.run_power (the numba kernel) -- "
                 "authoritative source for tab:power AND the fig_power anchor.\n")
         f.write("\\begin{tabular}{lccc}\n\\toprule\n")
         f.write("& (i) $\\mathrm{I}(1)$, & (ii) $\\mathrm{I}(1)$ + & "
@@ -942,7 +942,7 @@ def _add_common(sp):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Unified Model LB robustness suite (v6).")
+    ap = argparse.ArgumentParser(description="Unified Model LB robustness suite.")
     ap.add_argument("--selftest", action="store_true",
                     help="pure-logic tests (no numba/production needed)")
     sub = ap.add_subparsers(dest="cmd")
@@ -987,7 +987,7 @@ def main(argv=None):
 # ------------------------------------------------------------------------------
 def _selftest():
     print("=" * 70)
-    print("SELF-TEST robustness_v6 -- pure logic (no numba)")
+    print("SELF-TEST robustness -- pure logic (no numba)")
     print("=" * 70)
     ok = True
 

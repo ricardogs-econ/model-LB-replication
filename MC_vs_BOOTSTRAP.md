@@ -1,12 +1,13 @@
-# Monte Carlo and bootstrap in this package: three procedures, not two
+# Monte Carlo and bootstrap in this package: three resampling procedures plus a robustness stage
 
 A recurring source of confusion is that the words "Monte Carlo" and "bootstrap"
 are used loosely, as if the package ran one simulation. It runs **three**
-distinct resampling/simulation procedures, at three different stages, on three
-different data-generating assumptions. They are complementary — each answers a
-question the others cannot — and they are never interchangeable. This note fixes
-the vocabulary and the interfaces so that a replicator knows exactly which
-procedure produces which number.
+distinct resampling/simulation procedures, at three stages, on three different
+data-generating assumptions — plus a **robustness stage (Section 5)** that
+re-uses the first procedure's machinery under deliberately misspecified nulls.
+They are complementary — each answers a question the others cannot — and they are
+never interchangeable. This note fixes the vocabulary and the interfaces so that
+a replicator knows exactly which procedure produces which number.
 
 The unifying object is the point-optimal statistic and its finite-sample
 critical value. Everything below is about how the **null distribution** is
@@ -38,6 +39,55 @@ critical values of MZa, MSB, MZt, PT, MPT.
 
 ---
 
+## Robustness of the calibration (Section 5) — Monte Carlo under a *misspecified* null
+
+Section 5 does not introduce a new resampling scheme. It re-runs the machinery
+of Procedure 1 — parametric Monte Carlo of the null — but deliberately changes
+the null's short-run structure, to measure how far the i.i.d.-calibrated
+`c-bar*(m,T)` and its critical values degrade when the maintained assumptions
+fail. It answers a different question ("is the Section 3–4 calibration robust?")
+with the same tool, so it belongs here rather than among the bootstraps.
+
+Four experiments, all driven by `replicate_section5.py`:
+
+- **`ar1` — AR(1) size/power and recalibration.** The null innovations are drawn
+  from an AR(1), `ε_t = ρ ε_{t-1} + e_t`, instead of i.i.d. Two readings: (i) the
+  empirical size/power of the i.i.d.-calibrated test *applied* under dependence
+  (how much distortion the practitioner incurs); (ii) with `--recalibrate`, the
+  `c-bar*` *re-found* under the AR(1) null, isolating whether the distortion comes
+  from the variance-estimation channel or from displacement of `c-bar`. The
+  long-run-variance estimator matters here: the difference-based `s²` is
+  inconsistent under serial correlation (`plim = σ²/(1−ρ²)` against
+  `ω² = σ²/(1−ρ)²`, an inflation factor `(1+ρ)/(1−ρ)`), whereas autoregressive
+  MAIC remains consistent but degrades at very short `T`.
+- **`oracle` — the infeasible benchmark.** Critical values computed with the
+  *true* long-run variance substituted for its estimate, giving the power ceiling
+  the feasible test aspires to; the feasible–oracle gap quantifies the price of
+  estimating `ω²`.
+- **`trimming` — break-fraction sensitivity.** Re-computes the surface under
+  trimming `ε ∈ {0.10, 0.15, 0.20}`; since `c-bar` depends only weakly on the
+  break locations `λ`, each cell should be near-invariant (within one grid step /
+  Monte Carlo error) — a direct check of the location-invariance the theory
+  predicts.
+- **`power` — c-bar specification comparison.** Size and power of MZt under three
+  `c-bar` specifications (calibrated Model 1, linear break-count scaling,
+  trend-break surface) and three DGPs; produces `power_comparison.csv`,
+  `tab_power.tex`, and the power-curve figure. Column (ii) ≈ column (i) is the
+  empirical confirmation of the exact invariance of GLS detrending to break
+  magnitudes.
+
+**Reads.** the Section 3–4 surface `cbar_surface.csv` (the i.i.d. anchor whose
+robustness is being probed). **Runs.** `python replicate_section5.py all`
+(or `ar1 --recalibrate`, `oracle`, `trimming`, `power`).
+
+**Why it is not a bootstrap.** Nothing is resampled from data. The null is
+parametric and *assumed*, exactly as in Procedure 1 — only the assumed law is
+varied (AR(1), true-`ω²` oracle, alternative trimming) to stress-test the
+calibration. It is Monte Carlo, second-order: a simulation *about* a simulation's
+robustness.
+
+---
+
 ## Procedure 2 — Sieve-AR(p) BOOTSTRAP (Section 6, calibration for the application)
 
 **Question.** For the eight admissible currencies, whose real exchange rates are
@@ -61,7 +111,7 @@ values. This is the calibration the empirical verdicts in Section 6 use.
 lookup fallback).
 
 **Driver / control.** `replicate_section6.py boot`
-(wraps `boot_ppp_cbar_production_v2.py`); bootstrap replications `B = 9999`.
+(wraps `boot_ppp_cbar.py`); bootstrap replications `B = 9999`.
 
 **Runs.** `python replicate_section6.py boot`
 
@@ -110,6 +160,7 @@ bootstrap.
 | # | Name | Stage | Null | Resampling | Driver | Count |
 |---|---|---|---|---|---|---|
 | 1 | Monte Carlo calibration | §3–4 | parametric RW (assumed) | draw N(0,1) innovations | `replicate_section3_4.py` | `R` |
+| — | Robustness (MC, misspecified null) | §5 | AR(1) / true-ω² oracle / alt. trimming (assumed) | draw from the varied null | `replicate_section5.py` | `R` |
 | 2 | Sieve-AR(p) bootstrap | §6 calib | AR(p)+unit root (estimated) | redraw sieve innovations | `replicate_section6.py boot` | `B=9999` |
 | 3 | Wild bootstrap | §6 half-life | AR + heteroskedastic (estimated) | sign-randomize residuals | `replicate_section6.py hl` | `B=9999` |
 

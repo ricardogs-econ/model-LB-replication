@@ -150,8 +150,8 @@ def main():
 
     core.warm_up_numba(P["kmax"])
     core.run_grid(P, n_jobs=args.jobs)
-    df = core.agregar(P)
-    src = os.path.join(P["checkpoint_dir"], "resultados_cbar_ml1_v5.csv")
+    df = core.aggregate(P)
+    src = os.path.join(P["checkpoint_dir"], "cbar_surface.csv")
     if os.path.exists(src):
         import shutil
         shutil.copyfile(src, out_csv)

@@ -16,17 +16,18 @@ on the identical implementation and the identical long-run-variance convention.
 
 | File | Kind | Reproduces |
 |---|---|---|
-| `mlb_core.py` | **Kernel library** (not run directly). The single implementation of the Model LB test and its finite-sample calibration: the `@njit` numerical kernels, the calibration driver `run_grid`/`agregar`, the single-series interface `run_test`, and the validation gates (`python mlb_core.py --selftest`). Everything else imports from here. | — |
+| `mlb_core.py` | **Kernel library** (not run directly). The single implementation of the Model LB test and its finite-sample calibration: the `@njit` numerical kernels, the calibration driver `run_grid`/`aggregate`, the single-series interface `run_test`, and the validation gates (`python mlb_core.py --selftest`). Everything else imports from here. | — |
 | `replicate_section3_4.py` | Driver | **Sections 3–4**: the calibration surface `c-bar(m,T)` with the critical values of the five M-class statistics, and Figure `cbar`. Writes `cbar_surface.csv` (the input to Sections 5 and 6). |
 | `replicate_section5.py` | Driver | **Section 5**: robustness (`ar1`, `oracle`, `trimming`) and the power comparison (`power`) — Tables `ar1-sizepower`, `serial`, `trimming`, Table/Figure `power`. |
 | `replicate_section6.py` | Driver | **Section 6**: the PPP application — admissibility `sweep`, sieve-AR(p) `boot`, median-unbiased `hl`, and the two `figures`. |
 | `run_model_lb.py` | Tool | **Apply the test to your own series** (see §3 below). |
 
-Supporting modules called by the drivers (not run directly): `robustness_v6.py`
-and `validacao_tab4_fig2.py` (Section 5), `ppp_sweep_bis.py`,
-`boot_ppp_cbar_production_v2.py`, `hl_median_unbiased.py`, `figs_ppp_v2.py`
+Supporting modules called by the drivers (not run directly): `mlb_kernel.py`
+(pure-Python fallback for `mlb_core.py` when numba is unavailable), `robustness.py`
+and `size_power_cbar_comparison.py` (Section 5), `ppp_sweep_bis.py`,
+`boot_ppp_cbar.py`, `hl_median_unbiased.py`, `figs_ppp.py`
 (Section 6). The trend-break comparison curve in Section 5 uses the CKP
-response surface, **inlined** in `validacao_tab4_fig2.py`; the package has no
+response surface, **inlined** in `size_power_cbar_comparison.py`; the package has no
 dependency on the companion growth-empirics paper.
 
 ### Data and artifact files
@@ -193,12 +194,8 @@ not as a verdict on purchasing power parity.
 
 ## 8. Citation
 
-Please cite the paper and this software archive:
-
-> Gonçalves Silva, R. (2026). Replication package: Level Breaks and
-> Finite-Sample GLS Detrending. Zenodo. https://doi.org/10.5281/zenodo.21229774
-
-and the primary reference:
+Please cite the paper (see `CITATION` once the DOI is assigned) and the primary
+reference:
 
 > Carrion-i-Silvestre, J.L., Kim, D., Perron, P. (2009). GLS-based unit root
 > tests with multiple structural breaks under both the null and the alternative

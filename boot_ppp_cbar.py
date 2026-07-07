@@ -7,16 +7,16 @@ PPP application (OECD-core/USD, Model LB): production calibration of the
 extended response surface  (cbar*(m,T,p), cv(m,T,p))  under a sieve-AR(p)
 innovation, plus the preliminary empirical block. Numba throughout.
 
-EQUIVALENCE CONTRACT (v6).  Every Monte Carlo convention is inherited from
+EQUIVALENCE CONTRACT.  Every Monte Carlo convention is inherited from
 mlb_core.py, the Article-1 production engine:
   * numerical kernels build_z_nb/glsd_nb/ols_detrend_nb/s2ar_const_nb/
-    s2ar_maic_nb/mstats_nb IMPORTED from v6 (never reimplemented);
+    s2ar_maic_nb/mstats_nb IMPORTED from the kernel (never reimplemented);
   * TANGENCY (Option B, ERS envelope convention): cbar*(m,T,p) is located
     where the power of the ORACLE PT --- P_T computed with the TRUE long-run
     variance omega^2 = sigma^2/phi(1)^2 of each draw, NP2001 eq. 7 with
     s2_AR -> omega^2 --- crosses 0.50 on the cbar grid [-20,-3] step 0.5
     (interpolated, delta-method SE, flagged argmin fallback). This is the ERS
-    definition of c-bar (the envelope), which the v6 feasible tangency
+    definition of c-bar (the envelope), which the feasible tangency
     approximates under iid/const; under AR(p)+MAIC at short T the feasible
     power saturates below 0.50 (the Murray-Papell mechanism), so the envelope
     is the well-defined object. The FEASIBLE statistics (MZt, PT with MAIC)
@@ -28,7 +28,7 @@ mlb_core.py, the Article-1 production engine:
   * kmax configurable via --kmax (default 12, the paper convention; NOT
     Schwert -- 10 would be the Schwert value at T=52, exposed for the
     referee sensitivity run);
-  * lambda-averaging over gerar_lambdas(m, trim=.15, min_spacing=.15, n_grid=7);
+  * lambda-averaging over make_lambdas(m, trim=.15, min_spacing=.15, n_grid=7);
   * per-config deterministic seeds: config_seed(...) extended with 104729*p
     so AR orders use disjoint streams;
   * beta=0 WLOG (exact-detrending invariance, the validated sanity direction);
@@ -38,7 +38,7 @@ mlb_core.py, the Article-1 production engine:
 AR(p) innovation: partial-autocorrelation (Levinson-Durbin) parameterisation,
 bijective onto the stationary region -- stability by construction.
 
-FALLBACK CHAIN (strict): v6 kernels -> mlb_kernel.py (exact, pure Python,
+FALLBACK CHAIN (strict): the numba kernel -> mlb_kernel.py (exact, pure Python,
 ~45x slower, loud WARN) -> ABORT. Production never runs on an approximation.
 
 Outputs (all numbers needed for tables/figures) under --out:
@@ -65,20 +65,20 @@ import numpy as np
 warnings.filterwarnings("ignore")
 
 # =============================================================================
-# 0. PATHS (defaults = Ricardo's machine; every one overridable via CLI)
+# 0. PATHS (defaults for a local run; every one overridable via CLI)
 # =============================================================================
 DEFAULT_MC_DIR  = "."   # calibration CSV directory (portable default)
 DEFAULT_OUT_DIR = "./boot_out"           # bootstrap outputs (portable default)
 DEFAULT_EMP_DIR = "."           # empirical panel directory (portable default)
 
 # =============================================================================
-# 1. KERNEL IMPORT -- strict chain: v6 -> mlb_kernel -> abort
+# 1. KERNEL IMPORT -- strict chain: numba kernel -> pure-Python kernel -> abort
 # =============================================================================
 KERNEL_SOURCE = None
 V6 = None
 
 def load_kernels(mc_dir: str):
-    """Bind the numba kernels from v6; fall back to mlb_kernel (exact) or abort."""
+    """Bind the numba kernels from mlb_core; fall back to a pure-Python kernel or abort."""
     global KERNEL_SOURCE, V6
     for cand in (mc_dir, os.getcwd(), os.path.dirname(os.path.abspath(__file__)),
                  "/mnt/project"):
@@ -91,12 +91,12 @@ def load_kernels(mc_dir: str):
         return dict(build_z=V6mod.build_z_nb, glsd=V6mod.glsd_nb,
                     mstats=V6mod.mstats_nb, gen_dgp=V6mod.gen_dgp_nb,
                     warm=V6mod.warm_up_numba, njit=_get_njit(),
-                    gerar_lambdas=V6mod.gerar_lambdas,
+                    make_lambdas=V6mod.make_lambdas,
                     config_seed=V6mod.config_seed,
                     break_pos=V6mod.break_pos_from_lambdas,
                     se_power=V6mod.se_power, method_code=V6mod._METHOD_CODE)
     except Exception as e:
-        print(f"[kernel] v6 unavailable ({e}); trying mlb_kernel (exact, slow)...")
+        print(f"[kernel] numba kernel unavailable ({e}); trying mlb_kernel (exact, slow)...")
     try:
         import mlb_kernel as MK
         KERNEL_SOURCE = f"mlb_kernel FALLBACK ({MK.__file__}) -- EXACT BUT ~45x SLOWER"
@@ -118,13 +118,13 @@ def load_kernels(mc_dir: str):
                     mstats=mstats_adapter, gen_dgp=gen_dgp_adapter,
                     warm=lambda k=12: "[mlb_kernel] pure python",
                     njit=_get_njit(),
-                    gerar_lambdas=_gerar_lambdas_local,
+                    make_lambdas=_make_lambdas_local,
                     config_seed=_config_seed_local,
                     break_pos=_break_pos_local,
                     se_power=lambda p, R: float(np.sqrt(max(p*(1-p),0)/R)) if R>0 else np.nan,
                     method_code={"const": 0, "maic": 1})
     except Exception as e:
-        raise SystemExit(f"[kernel] FATAL: neither v6 nor mlb_kernel importable "
+        raise SystemExit(f"[kernel] FATAL: neither numba nor pure-Python kernel importable "
                          f"({e}). Production requires a validated kernel. ABORT.")
 
 def _get_njit():
@@ -139,7 +139,7 @@ def _get_njit():
         return njit
 
 # local copies used ONLY under the mlb_kernel fallback (identical arithmetic)
-def _gerar_lambdas_local(m, trim, min_spacing, n_grid=7):
+def _make_lambdas_local(m, trim, min_spacing, n_grid=7):
     if m == 0: return [()]
     ng = max(n_grid, 3 * m - 1)
     grid = np.round(np.linspace(trim, 1 - trim, ng), 3)
@@ -194,11 +194,11 @@ def make_gen_arp(njit):
         and w_t the AR(p) nuisance: phi(L) w_t = e_t. beta = 0 WLOG (exact-
         detrending invariance). eps has length nt+burn; the first `burn` draws
         prime the AR(p) recursion for w so that w is at its stationary law by
-        t=0. p=0 (phi empty) reproduces the v6 iid DGP EXACTLY: then w_t = e_t,
+        t=0. p=0 (phi empty) reproduces the iid DGP EXACTLY: then w_t = e_t,
         u_0 = 0, u_t = rho*u_{t-1} + e_t -- identical to gen_dgp_nb (beta=0).
 
         NOTE ON THE FIRST OBSERVATION (cf. OBES 2015 on GLS detrending): the
-        series passed to the kernel starts at u_0 = 0 exactly as in v6, so the
+        series passed to the kernel starts at u_0 = 0 exactly as in the numba kernel, so the
         ERS treatment of the first observation in glsd_nb is preserved. The
         burn-in acts ONLY on the stationary nuisance w, never on the initial
         condition of the integrated u.
@@ -213,7 +213,7 @@ def make_gen_arp(njit):
                 if t - 1 - j >= 0:
                     acc += phi[j] * w[t - 1 - j]
             w[t] = acc
-        # 2) integrate ONLY the post-burn segment, with u_0 = 0 (v6 convention)
+        # 2) integrate ONLY the post-burn segment, with u_0 = 0 (kernel convention)
         rho = 1.0 + c / nt
         u = np.zeros(nt)
         for t in range(1, nt):
@@ -222,12 +222,12 @@ def make_gen_arp(njit):
     return gen_dgp_arp_nb
 
 # =============================================================================
-# 3. TANGENCY (v6 convention, AR(p) innovation) + cv collection
+# 3. TANGENCY (kernel convention, AR(p) innovation) + cv collection
 # =============================================================================
 def _pt_oracle(K, y, Z, cbar, omega2):
     """P_T with the TRUE long-run variance (ERS envelope convention):
     P_T = [S(a-bar) - a-bar * S(1)] / omega^2, NP2001 eq. 7, replicated from
-    v6's mstats_nb with s2_AR replaced by the known omega^2 = sigma^2/phi(1)^2.
+    the kernel's mstats_nb with s2_AR replaced by the known omega^2 = sigma^2/phi(1)^2.
     Uses the kernel's glsd when it returns (residual, ssr); otherwise computes
     the quasi-differenced SSR directly under first-observation definition (1)."""
     nt = Z.shape[0]
@@ -252,7 +252,7 @@ def _pt_oracle(K, y, Z, cbar, omega2):
 def stats_under(K, gen_arp, T, break_pos, c, cbar, mc, n_reps, seed0, kmax,
                 p, pac1, burn):
     """n_reps draws at alternative c, stats at detrending cbar; AR(p) innovation.
-    RNG in the orchestrator (v6 pattern): per-rep seed = seed0 + r.
+    RNG in the orchestrator: per-rep seed = seed0 + r.
     Returns (pt_feasible, mzt_feasible, pt_oracle): the feasible statistics use
     the MAIC/const estimator inside mstats_nb; the oracle PT uses the TRUE
     omega^2 of the draw (phi is known to the simulator), i.e. the ERS envelope
@@ -551,14 +551,14 @@ def main():
     print(f"[kernel] {KERNEL_SOURCE}")
     print(K["warm"](12))
     gen_arp = make_gen_arp(K["njit"])
-    # equivalence gate p=0: gen_arp with empty phi must match v6 gen_dgp path
+    # equivalence gate p=0: gen_arp with empty phi must match the kernel gen_dgp path
     rng = np.random.default_rng(123); T0 = 40
     eps = rng.standard_normal(T0 + 0)
     if V6 is not None:
         y_v6 = V6.gen_dgp_nb(T0, np.array([12], dtype=np.int64), 0.0, 0.0, eps)
         y_ar = gen_arp(T0, 0, 0.0, np.zeros(0), eps)
         g0 = float(np.max(np.abs(y_v6 - y_ar)))
-        print(f"[gate G3] gen_arp(p=0) == v6 gen_dgp: max|d|={g0:.2e} "
+        print(f"[gate G3] gen_arp(p=0) == kernel gen_dgp: max|d|={g0:.2e} "
               f"[{'PASS' if g0 < 1e-12 else 'FAIL'}]")
         assert g0 < 1e-12
 
@@ -602,7 +602,7 @@ def main():
         if args.nrep:
             P["R_cv"] = args.nrep; P["R_pow"] = max(1, args.nrep // 2)
         m_, T_, p_ = args.m, args.T, args.p
-        lams = K["gerar_lambdas"](m_, P["trim"], P["min_spacing"], P["n_grid"])
+        lams = K["make_lambdas"](m_, P["trim"], P["min_spacing"], P["n_grid"])
         n_grid_cbar = len(P["cbar_grid"])
         print(f"[grid] single cell m={m_} T={T_} p={p_} | "
               f"{len(lams)} lambda x {n_grid_cbar} cbar x "
@@ -652,7 +652,7 @@ def main():
             cells.append((m, T_emp, p, "maic"))
     cells.insert(1, (2, T_emp, 0, "const"))  # Article-1 anchor
 
-    lam_cache = {m: K["gerar_lambdas"](m, P["trim"], P["min_spacing"], P["n_grid"])
+    lam_cache = {m: K["make_lambdas"](m, P["trim"], P["min_spacing"], P["n_grid"])
                  for m in m_list}
     _write_csv(out_dir / "calib" / "lambda_configs.csv",
                [dict(m=m, config=str(l)) for m in lam_cache for l in lam_cache[m]])

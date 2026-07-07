@@ -1,5 +1,5 @@
 # =============================================================================
-# ppp_sweep_bis.py [v1.3] -- Exhaustive admissibility sweep over the BIS currency
+# ppp_sweep_bis.py -- Exhaustive admissibility sweep over the BIS currency
 #                     universe for the Model LB PPP application.
 #
 # PURPOSE

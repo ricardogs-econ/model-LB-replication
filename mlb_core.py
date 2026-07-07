@@ -23,9 +23,9 @@ O((m+1)/T) remainder, which this kernel calibrates.
 CONTENTS
     Numerical kernels (@njit): build_z_nb, glsd_nb, ols_detrend_nb,
         s2ar_const_nb, s2ar_maic_nb, mstats_nb, gen_dgp_nb.
-    Calibration driver: calibrar_config / run_grid / agregar (the c-bar(m,T)
+    Calibration driver: calibrate_config / run_grid / aggregate (the c-bar(m,T)
         surface with the critical values of the five M-class statistics).
-    Design helpers: gerar_lambdas, enumerar_configs, config_seed, warm-up.
+    Design helpers: make_lambdas, enumerate_configs, config_seed, warm-up.
     Validation: `--selftest` (empirical size ~ 0.05; magnitude-invariance
         |dMZt| ~ 1e-16; power at c=-10 > size; DU = 1{t>tau}).
 
@@ -70,7 +70,7 @@ except Exception:
 warnings.filterwarnings("ignore")
 
 # =============================================================================
-# DEFAULTS  (documented; same grid as v2/v3 unless noted)
+# DEFAULTS  (documented)
 # =============================================================================
 DEFAULTS = dict(
     T_grid       = [30, 45, 50, 60, 80, 100, 150, 200, 300],
@@ -90,8 +90,8 @@ DEFAULTS = dict(
     compute_power_curves = True,
     save_raw_vectors     = True,
     seed_base    = 20240601,
-    checkpoint_dir = "checkpoints_cbar_ml1_v5",
-    # ---- v5: per-configuration refinement of the tangency search -------------
+    checkpoint_dir = "cbar_checkpoints",
+    # ---- per-configuration refinement of the tangency search ----------------
     # Motivation: m=0 has NO averaging over break locations lambda (zero breaks
     # => a single configuration), so it is the only grid row unprotected against
     # single-draw Monte Carlo noise. The power curve there has local slope
@@ -122,10 +122,11 @@ DEFAULTS = dict(
                                    # window wastes refine_R_pow reps on points far
                                    # from power=0.5 (where power is ~0 or ~1 and
                                    # carries no information about the crossing).
-    # ---- v6: native seed-averaging of the m=0 row ----------------------------
+    # ---- native seed-averaging of the m=0 row --------------------------------
     # m=0 has NO lambda-averaging (zero breaks => one configuration), so a single
-    # seed is exposed to ~0.07 cross-seed scatter. The v5 refinement pins ONE
-    # seed tightly (se_cbar~0.027) but does not average ACROSS seeds. v6 runs m=0
+    # seed is exposed to ~0.07 cross-seed scatter. The per-configuration refinement
+    # pins ONE seed tightly (se_cbar~0.027) but does not average ACROSS seeds; the
+    # m=0 row is instead run
     # over m0_seeds independent streams and reports the mean; se <- sd/sqrt(K).
     # This changes nothing for m>=1 (already smooth via lambda-averaging).
     m0_seed_averaging = True,
@@ -195,7 +196,7 @@ def glsd_nb(y, Z, cbar):
             sy += Za[t, i] * ya[t]
         Aty[i] = sy
     for i in range(ncol):
-        AtA[i, i] += 1e-10            # ridge for numerical safety (matches v3)
+        AtA[i, i] += 1e-10            # ridge for numerical safety
 
     bhat = np.linalg.solve(AtA, Aty)
 
@@ -423,7 +424,7 @@ def mstats_nb(y, Z, cbar, sigma2_method, kmax):
     pt = (ssra - abar * ssr1) / sar
 
     # MPT, DEMEANED form (NP2001 eq.9, p=0):  [c-bar^2 T^-2 sum yt^2 - c-bar ytT^2/T]/s2ar
-    #   (v3 used (1 - c-bar) -- that is the DETRENDED eq.10 form, wrong for Model LB.)
+    #   (the (1 - c-bar) form is the DETRENDED eq.10 form, wrong for Model LB.)
     mpt = (cbar * cbar * sumyt2 - cbar * ytT * ytT / nt) / sar
 
     return mza, msb, mzt, pt, mpt, 1.0
@@ -476,7 +477,7 @@ def warm_up_numba(kmax=12):
     return "[no-numba] running pure-Python fallback (identical arithmetic, slower)."
 
 
-def gerar_lambdas(m, trim, min_spacing, n_grid=7):
+def make_lambdas(m, trim, min_spacing, n_grid=7):
     """m break fractions in [trim, 1-trim] with spacing >= min_spacing. m=0 -> [()]."""
     if m == 0:
         return [()]
@@ -493,14 +494,14 @@ def gerar_lambdas(m, trim, min_spacing, n_grid=7):
     return combos
 
 
-def enumerar_configs(P):
+def enumerate_configs(P):
     """All (T, m, lambdas) with T >= m_min_T[m]."""
     cfgs = []
     for m in P['m_grid']:
         for T in P['T_grid']:
             if T < P['m_min_T'].get(m, 30):
                 continue
-            for lambdas in gerar_lambdas(m, P['trim'], P['min_spacing'], P['n_grid']):
+            for lambdas in make_lambdas(m, P['trim'], P['min_spacing'], P['n_grid']):
                 cfgs.append((T, m, lambdas))
     return cfgs
 
@@ -565,7 +566,7 @@ def _tangency_on_grid(P, T, break_pos, mc, kmax, cfg_seed, cbar_grid,
     """Locate the interpolated power=target tangency on a given c-bar grid.
     Returns (cbar_star, poder_star, se_cbar_star, fallback_used, cb_arr,
     pw_arr, cv_arr, se_arr) or None if no usable point. Factored out of
-    calibrar_config_sigma so it can be called twice (coarse then refined).
+    calibrate_config_sigma so it can be called twice (coarse then refined).
     seed_offset lets the refined pass use independent draws from the coarse
     pass, so the two are not coupled."""
     tang = P['target_power']
@@ -616,13 +617,13 @@ def _tangency_on_grid(P, T, break_pos, mc, kmax, cfg_seed, cbar_grid,
             cb_arr, pw_arr, cv_arr, se_arr)
 
 
-def calibrar_config_sigma(T, m, lambdas, P, sigma2_method):
+def calibrate_config_sigma(T, m, lambdas, P, sigma2_method):
     """Calibrate c-bar* and critical values for one config and one sigma^2 method.
     Selection rule: interpolated tangency of power=target on the c-bar grid
     (Perron style), with a delta-method SE; grid-argmin only as a flagged
     fallback. Returns a result dict.
 
-    v5: for cheap configurations (few lambda points -- in practice m=0, which
+    For cheap configurations (few lambda points -- in practice m=0, which
     has no lambda-averaging and is the only row exposed to single-draw noise),
     a SECOND tangency pass is run on a finer c-bar grid local to the coarse
     optimum, with more replications. This sharpens the Monte Carlo resolution
@@ -642,7 +643,7 @@ def calibrar_config_sigma(T, m, lambdas, P, sigma2_method):
     (cbar_star, poder_star, se_cbar_star, fallback_used,
      cb_arr, pw_arr, cv_arr, se_arr) = coarse
 
-    # ---- 1r) Refined tangency for cheap configs (v5) -------------------------
+    # ---- 1r) Refined tangency for cheap configs ------------------------------
     refined = False
     if (P.get('refine_cheap_configs', False)
             and len(lambdas) <= P.get('refine_max_lambdas', 1)
@@ -725,7 +726,7 @@ def _invariance_check(T, break_pos, cbar, seed, method_code, kmax):
     return float(abs(vals[0] - vals[1]))
 
 
-# --- v6: seed-averaging helpers for the m=0 row ------------------------------
+# --- seed-averaging helpers for the m=0 row ----------------------------------
 _M0_STATS = ('mza', 'msb', 'mzt', 'pt', 'mpt')
 _M0_QS = ('1%', '2.5%', '5%', '10%')
 
@@ -760,9 +761,9 @@ def guard_m0_stride(P):
 
 
 def _aggregate_m0_method(rs, T, method):
-    """Aggregate K per-method result dicts `r` (calibrar_config_sigma output, same
+    """Aggregate K per-method result dicts `r` (calibrate_config_sigma output, same
     (m=0, T, method), one per seed) into a single seed-averaged r, in the EXACT
-    schema v5.agregar/salvar_resultado consume: values -> mean over seeds; each SE
+    schema aggregate/save_result consume: values -> mean over seeds; each SE
     -> cross-seed sd/sqrt(K); inv_dev -> max; refined -> all; fallback -> any."""
     K = len(rs)
     cvs = {s: {} for s in _M0_STATS}
@@ -787,11 +788,11 @@ def _aggregate_m0_method(rs, T, method):
     )
 
 
-def calibrar_config(T, m, lambdas, P):
+def calibrate_config(T, m, lambdas, P):
     out = {'T': T, 'm': m, 'lambdas': lambdas, 'by_sigma2': {}}
     if (m == 0 and P.get('m0_seed_averaging', False)
             and int(P.get('m0_seeds', 1)) > 1):
-        # v6: m=0 has one configuration (no lambda). Calibrate over K independent
+        # m=0 has one configuration (no lambda). Calibrate over K independent
         # seed streams (seed_base + k*m0_seed_stride) and report the seed-average.
         # Native: the pickle written here is already seed-averaged, so CSV/tables/
         # figure derive from it directly. The K loop is serial (one m=0 config is
@@ -801,7 +802,7 @@ def calibrar_config(T, m, lambdas, P):
             rs = []
             for k in range(K):
                 Pk = dict(P); Pk['seed_base'] = base + k * stride
-                r = calibrar_config_sigma(T, m, lambdas, Pk, method)
+                r = calibrate_config_sigma(T, m, lambdas, Pk, method)
                 if r is not None:
                     rs.append(r)
             if len(rs) >= 2:
@@ -810,7 +811,7 @@ def calibrar_config(T, m, lambdas, P):
                 out['by_sigma2'][method] = rs[0]     # degenerate (K effectively 1)
     else:
         for method in P['sigma2_methods']:
-            res = calibrar_config_sigma(T, m, lambdas, P, method)
+            res = calibrate_config_sigma(T, m, lambdas, P, method)
             if res is not None:
                 out['by_sigma2'][method] = res
     return out if out['by_sigma2'] else None
@@ -828,7 +829,7 @@ def pkl_path(P, key):  return os.path.join(P['checkpoint_dir'], f"{key}.pkl")
 def npz_path(P, key):  return os.path.join(P['checkpoint_dir'], f"{key}_raw.npz")
 
 
-def salvar_resultado(P, res):
+def save_result(P, res):
     key = config_key(res['T'], res['m'], res['lambdas'])
     raw_blocks = {}
     for method, r in res['by_sigma2'].items():
@@ -843,7 +844,7 @@ def salvar_resultado(P, res):
         pickle.dump(res, fh)
 
 
-def ja_processado(P, T, m, lambdas):
+def already_done(P, T, m, lambdas):
     return os.path.exists(pkl_path(P, config_key(T, m, lambdas)))
 
 
@@ -852,26 +853,25 @@ def run_grid(P, n_jobs=-1, chunk_size=None):
     Executa a grade pendente e REPORTA PROGRESSO DE FORMA GARANTIDA.
 
     PROBLEMA CORRIGIDO: no caminho paralelo (joblib, o default/recomendado
-    via --jobs -1), a única retroalimentação era o `verbose=5` interno do
-    joblib, chamando `Parallel(...)` UMA VEZ sobre toda a lista `todo`. Isso
-    devolve o controle ao processo principal só quando TUDO termina -- sem
-    nenhum print nosso no meio do caminho, o terminal fica em silêncio por
-    potencialmente horas numa grade de produção completa. O caminho serial
-    (n_jobs=1) tinha print por config, mas esse não é o caminho usado em
-    produção.
+    via --jobs -1), the only feedback was joblib's internal `verbose=5`,
+    calling `Parallel(...)` ONCE over the whole `todo` list. That returns
+    control to the main process only when EVERYTHING finishes -- with no
+    progress print in between, the terminal stays silent for potentially
+    hours on a full production grid. The serial path (n_jobs=1) printed per
+    config, but that is not the path used in production.
 
-    CORREÇÃO: a grade é dividida em LOTES; `Parallel` é aberto como context
-    manager (reaproveita o pool de workers entre lotes, sem repagar o custo
-    de spawn) e chamado uma vez por lote. Como cada chamada a `parallel(...)`
-    bloqueia até o lote terminar e então devolve o controle ao processo
-    PRINCIPAL, o print do progresso entre lotes é garantido -- não depende
-    de stdout dos workers ser repassado nem do verbosity interno do joblib.
-    Progresso é também GRAVADO em `<checkpoint_dir>/progress.log` (append,
-    flush imediato), para `tail -f` quando o script roda em background/nohup.
+    FIX: the grid is split into BATCHES; `Parallel` is opened as a context
+    manager (reusing the worker pool across batches, without re-paying the
+    spawn cost) and called once per batch. Since each `parallel(...)` call
+    blocks until its batch finishes and then returns control to the MAIN
+    process, the between-batch progress print is guaranteed -- it does not
+    depend on worker stdout being forwarded nor on joblib's internal verbosity.
+    Progress is also WRITTEN to `<checkpoint_dir>/progress.log` (append,
+    immediate flush), for `tail -f` when the script runs in background/nohup.
     """
     os.makedirs(P['checkpoint_dir'], exist_ok=True)
-    cfgs = enumerar_configs(P)
-    todo = [c for c in cfgs if not ja_processado(P, *c)]
+    cfgs = enumerate_configs(P)
+    todo = [c for c in cfgs if not already_done(P, *c)]
     n_total = len(todo)
     log_path = os.path.join(P['checkpoint_dir'], "progress.log")
 
@@ -881,20 +881,20 @@ def run_grid(P, n_jobs=-1, chunk_size=None):
             with open(log_path, 'a') as f:
                 f.write(msg + "\n")
         except OSError:
-            pass  # nunca deixar falha de log derrubar o cálculo
+            pass  # never let a logging failure bring down the computation
 
-    _log(f"Configs: {len(cfgs)} total | {n_total} pendentes | "
-         f"{len(cfgs) - n_total} já feitas (resume).")
+    _log(f"Configs: {len(cfgs)} total | {n_total} pending | "
+         f"{len(cfgs) - n_total} already done (resume).")
     if n_total == 0:
-        _log("Nada pendente.")
+        _log("Nothing pending.")
         return
     t0 = time.time()
 
     def _do(cfg):
         T, m, lambdas = cfg
-        res = calibrar_config(T, m, lambdas, P)
+        res = calibrate_config(T, m, lambdas, P)
         if res is not None:
-            salvar_resultado(P, res)
+            save_result(P, res)
         return cfg
 
     def _progress_line(n_done):
@@ -942,7 +942,7 @@ def run_grid(P, n_jobs=-1, chunk_size=None):
 # =============================================================================
 # 4. AGGREGATION + ALL PAPER OBJECTS
 # =============================================================================
-def agregar(P):
+def aggregate(P):
     import pandas as pd
     rows = []
     vm_max = 0.0
@@ -974,7 +974,7 @@ def agregar(P):
                 vm_max = max(vm_max, abs(r['inv_dev']))
 
     df = pd.DataFrame(rows).sort_values(['sigma2_method', 'T', 'm']).reset_index(drop=True)
-    out = os.path.join(P['checkpoint_dir'], "resultados_cbar_ml1_v5.csv")
+    out = os.path.join(P['checkpoint_dir'], "cbar_surface.csv")
     df.to_csv(out, index=False)
     print(f"\nAggregated: {out} | {len(df)} rows")
 
@@ -1079,7 +1079,7 @@ def surface_diagnostics(P, df, sigma2_method='const'):
     return diag
 
 
-def gerar_figura_superficie(P, df, intercepts, sigma2_method='const'):
+def make_surface_figure(P, df, intercepts, sigma2_method='const'):
     """Figure 1 (cbar_surface.pdf): (a) c-bar vs T by m; (b) c-bar vs 1/T with
     the per-m intercept fits sharing ~ -7."""
     try:
@@ -1116,9 +1116,9 @@ def gerar_figura_superficie(P, df, intercepts, sigma2_method='const'):
     ax2.set_title("(b) $\\bar c$ versus $1/T$ with per-$m$ fits")
 
     fig.tight_layout()
-    # Mesmo padrão de nome-por-método de gerar_tabelas_latex (defesa: hoje
-    # esta função só é chamada para 'const', via o gate em pos_processar,
-    # mas o sufixo evita sobrescrita silenciosa caso isso mude).
+    # Same per-method naming as make_latex_tables (guard: this function is
+    # currently only called for 'const', via the gate in post_process, but the
+    # suffix prevents silent overwrite should that change).
     suffix = "" if sigma2_method == 'const' else f"_{sigma2_method}"
     out = os.path.join(P['checkpoint_dir'], f"cbar_surface{suffix}.pdf")
     fig.savefig(out, bbox_inches='tight')
@@ -1126,24 +1126,19 @@ def gerar_figura_superficie(P, df, intercepts, sigma2_method='const'):
     print(f"[figure] wrote {out}")
 
 
-def gerar_tabelas_latex(P, df, intercepts, diag, sigma2_method='const'):
+def make_latex_tables(P, df, intercepts, diag, sigma2_method='const'):
     """Table 1 (c-bar surface) and Table 2 (MZt 5% CVs) as LaTeX, plus a small
     macro file with the headline numbers so the paper can \\input them.
 
-    CORREÇÃO (bug crítico, achado na 1a rodada de produção completa): os
-    três arquivos eram gravados sob nomes FIXOS, independentes de
-    sigma2_method. Como pos_processar() chama esta função uma vez por
-    método em P['sigma2_methods']=['const','maic'], o 'maic' (chamado por
-    último) SOBRESCREVIA os três artefatos do 'const' (o headline) -- o
-    resultado real observado foi tab_cbar_mT.tex/tab_cv5_mzt.tex/
-    headline_numbers.tex contendo os números do MAIC, não do const, sem
-    nenhum aviso. Nas células onde o MAIC colapsa (T=30, ver robustez: 23/23
-    configs em fallback), isso chegou a divergir por >10 em c̄ e a fazer os
-    interceptos 1/T parecerem refutar a Proposição 1 quando na verdade os
-    números corretos (const) a confirmam com precisão.
-    Corrigido: 'const' grava nos nomes CANÔNICOS (os que o paper faz
-    \\input{}); qualquer outro método grava em nomes com sufixo
-    _{sigma2_method}, preservando os dois sem conflito e sem sobrescrita.
+    Note: the three files must be written under method-dependent names. Since
+    post_process() calls this function once per method in
+    P['sigma2_methods']=['const','maic'], writing under FIXED names would let
+    'maic' (called last) overwrite the 'const' artifacts (the headline files).
+    In cells where MAIC collapses (T=30; see robustness) that can differ by >10
+    in c-bar and make the 1/T intercepts appear to contradict Proposition 1,
+    when the correct ('const') numbers confirm it. Fix: 'const' writes the
+    CANONICAL names (those the paper \\input{}s); any other method writes to
+    names suffixed _{sigma2_method}, keeping both without conflict.
     """
     d = df[df.sigma2_method == sigma2_method]
     out_dir = P['checkpoint_dir']
@@ -1184,15 +1179,15 @@ def gerar_tabelas_latex(P, df, intercepts, diag, sigma2_method='const'):
           f"headline_numbers{suffix}.tex in {out_dir}/")
 
 
-def pos_processar(P):
+def post_process(P):
     """Run all aggregation + paper-object generation from existing checkpoints."""
-    df = agregar(P)
+    df = aggregate(P)
     for method in P['sigma2_methods']:
         inter = fit_intercepts_1_over_T(df, method)
         diag = surface_diagnostics(P, df, method)
-        gerar_tabelas_latex(P, df, inter, diag, method)
+        make_latex_tables(P, df, inter, diag, method)
         if method == 'const':     # headline figure uses the difference-based sigma^2
-            gerar_figura_superficie(P, df, inter, method)
+            make_surface_figure(P, df, inter, method)
     return df
 
 
@@ -1375,19 +1370,19 @@ def _selftest_single():
 
 
 def main():
-    # Por padrão, stdout é TOTALMENTE bufferizado quando não ligado a um
-    # terminal (ex.: `nohup python3 ... > log.txt &`) -- nada aparece até o
-    # buffer enchêr ou o processo terminar, o que sozinho explica "nenhuma
-    # evolução impressa" num cálculo de horas. Forçar buffering por linha
-    # corrige isso para TODOS os prints do script, não só os de run_grid.
+    # By default stdout is FULLY buffered when not attached to a terminal
+    # (e.g. `nohup python3 ... > log.txt &`) -- nothing appears until the
+    # buffer fills or the process ends, which alone explains "no progress
+    # printed" in an hours-long run. Forcing line buffering fixes this for
+    # ALL prints in the script, not just those in run_grid.
     sys.stdout.reconfigure(line_buffering=True)
 
-    ap = argparse.ArgumentParser(description="Calibration of c-bar for Model LB (v5)")
+    ap = argparse.ArgumentParser(description="Calibration of c-bar for Model LB")
     ap.add_argument("--jobs", type=int, default=-1)
     ap.add_argument("--chunk-size", type=int, default=None,
-                    help="configs por lote no caminho paralelo (default: "
-                         "2x o número de workers). Lotes menores reportam "
-                         "progresso com mais frequência.")
+                    help="configs per batch on the parallel path (default: "
+                         "2x the number of workers). Smaller batches report "
+                         "progress more frequently.")
     ap.add_argument("--speed", action="store_true", help="quick smoke test (subgrid)")
     ap.add_argument("--selftest", action="store_true", help="run the single-series validation gates and exit")
     ap.add_argument("--outdir", default=DEFAULTS['checkpoint_dir'])
@@ -1414,15 +1409,15 @@ def main():
 
     if P.get('m0_seed_averaging', False) and int(P.get('m0_seeds', 1)) > 1:
         need = guard_m0_stride(P)
-        print(f"[v6] m=0 native seed-averaging: K={P['m0_seeds']} seeds, "
+        print(f"[calibration] m=0 native seed-averaging: K={P['m0_seeds']} seeds, "
               f"stride={P['m0_seed_stride']:,} (> {need:,}).")
 
     if args.post:
-        pos_processar(P)
+        post_process(P)
         return
 
     run_grid(P, n_jobs=args.jobs, chunk_size=args.chunk_size)
-    pos_processar(P)
+    post_process(P)
 
 
 if __name__ == "__main__":

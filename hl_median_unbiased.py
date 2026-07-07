@@ -24,7 +24,7 @@
 #
 # EQUIVALENCE.  The deterministic detrending (constant + level dummies at the
 # exogenous break positions) is built exactly as in boot_ppp_cbar_production.py
-# / the v6 kernels (searchsorted on the break years, DU_j = 1{t >= tau_j}), so
+# / the the numba kernel (searchsorted on the break years, DU_j = 1{t >= tau_j}), so
 # the residual u_t here is the same object whose AR(1) correlation the boot
 # reports as rho_LB.  The AR(p)/median-unbiased/grid-bootstrap machinery is new
 # and self-contained (numba-accelerated), and does not touch the GLS/M-statistic
@@ -395,6 +395,8 @@ def build_Z(years, break_years, with_breaks=True):
 
 
 def detrend(q, Z):
+    """Remove the deterministic component: return the OLS residual q - Z @ (Z\\Z q).
+    Z holds the constant and, if with_breaks, the level dummies at the break years."""
     beta, *_ = np.linalg.lstsq(Z, q, rcond=None)
     return q - Z @ beta
 
@@ -536,6 +538,8 @@ def selftest():
 # 8. MAIN
 # =============================================================================
 def load_panel(path):
+    """Load the real-exchange-rate panel: CSV with columns year and one column per
+    currency (log real exchange rate). Returns (years, {currency: series})."""
     panel = {}
     with open(path) as f:
         for row in csv.DictReader(f):
@@ -545,6 +549,8 @@ def load_panel(path):
 
 
 def load_dates(path):
+    """Load the exogenous break dates: CSV mapping each currency to its regime-change
+    year(s). Returns {currency: [break_year, ...]}."""
     ed = {}
     with open(path) as f:
         for row in csv.DictReader(f):
@@ -553,6 +559,7 @@ def load_dates(path):
 
 
 def load_p(path):
+    """Load the per-currency ADF lag order p (CSV: currency, p). Returns {currency: p}."""
     pm = {}
     with open(path) as f:
         for row in csv.DictReader(f):
@@ -612,6 +619,8 @@ def main():
                       boot=args.boot, also_wild=args.also_wild)
         mp, lb = res["MP"], res["LB"]
         def fmt_ci(d):
+            """Format a half-life CI for printing (handles the infinite upper
+            bound when the persistence CI reaches the unit root)."""
             lo, hi = d["hl_ci"]
             hi_s = "inf" if not np.isfinite(hi) else f"{hi:.1f}"
             lo_s = "inf" if not np.isfinite(lo) else f"{lo:.1f}"

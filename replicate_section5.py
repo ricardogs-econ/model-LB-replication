@@ -23,7 +23,7 @@ WHAT IT PRODUCES  (subcommands)
               only in power (the shortcuts over-detrend and lose power).
               -> Table `power`, Figure `power`.  The trend-break comparison
               curve uses the CKP response surface c_bar_rs, INLINED in
-              validacao_tab4_fig2.py so this package has no external dependency.
+              size_power_cbar_comparison.py so this package has no external dependency.
     all       Run ar1, oracle, trimming, power in sequence.
 
 USAGE
@@ -39,7 +39,7 @@ INPUT
     if it is elsewhere. If absent, c-bar falls back to the ERS demeaned value.
 
 REQUIRES
-    mlb_core.py, robustness_v6.py, validacao_tab4_fig2.py in the same directory;
+    mlb_core.py, robustness.py, size_power_cbar_comparison.py in the same directory;
     numpy, numba, matplotlib, joblib.
 ================================================================================
 """
@@ -66,23 +66,23 @@ def main():
     args, rest = ap.parse_known_args()
 
     if args.selftest or args.subcommand == "selftest":
-        _run_module("robustness_v6", ["--selftest"])
+        _run_module("robustness", ["--selftest"])
         return
 
     if args.subcommand is None:
         ap.print_help(); sys.exit(0)
 
     if args.subcommand == "power":
-        # Table/Figure `power` are produced by validacao_tab4_fig2 (c_bar_rs inlined).
-        _run_module("validacao_tab4_fig2", rest)
+        # Table/Figure `power` are produced by size_power_cbar_comparison (c_bar_rs inlined).
+        _run_module("size_power_cbar_comparison", rest)
     elif args.subcommand == "all":
         for sub in ("ar1", "oracle", "trimming"):
             print(f"\n===== robustness: {sub} =====")
-            _run_module("robustness_v6", [sub] + rest)
+            _run_module("robustness", [sub] + rest)
         print("\n===== power (Table/Figure power) =====")
-        _run_module("validacao_tab4_fig2", rest)
+        _run_module("size_power_cbar_comparison", rest)
     else:
-        _run_module("robustness_v6", [args.subcommand] + rest)
+        _run_module("robustness", [args.subcommand] + rest)
 
 
 if __name__ == "__main__":

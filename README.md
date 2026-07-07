@@ -194,8 +194,13 @@ not as a verdict on purchasing power parity.
 
 ## 8. Citation
 
-Please cite the paper (see `CITATION` once the DOI is assigned) and the primary
-reference:
+Please cite the paper (see `CITATION.cff` for the DOI once assigned on
+acceptance) and this software archive:
+
+> Gonçalves Silva, R. (2026). Replication package: Level Breaks and
+> Finite-Sample GLS Detrending. Zenodo. https://doi.org/10.5281/zenodo.21229773
+
+and the primary reference:
 
 > Carrion-i-Silvestre, J.L., Kim, D., Perron, P. (2009). GLS-based unit root
 > tests with multiple structural breaks under both the null and the alternative

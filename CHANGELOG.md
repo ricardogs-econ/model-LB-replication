@@ -10,7 +10,8 @@ follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 Documentation-completeness fix: the v1.1.0 archive omitted `pesaran_cd.py`
 from the shipped files even though it was already used to produce the Section
 6 cross-sectional-dependence number reported in the paper. No numerical
-result changes; no other module touched.
+result changes; no other module touched. Archived on Zenodo (version DOI
+`10.5281/zenodo.21231384`).
 
 ### Added
 - `pesaran_cd.py` -- a stand-alone Pesaran (2004, 2015) cross-sectional

@@ -12,7 +12,7 @@ on the identical implementation and the identical long-run-variance convention.
 
 ---
 
-## 1. Layout: one core, one driver per section, one tool
+## 1. Layout: one core, one driver per section, one tool, one diagnostic
 
 | File | Kind | Reproduces |
 |---|---|---|
@@ -21,14 +21,13 @@ on the identical implementation and the identical long-run-variance convention.
 | `replicate_section5.py` | Driver | **Section 5**: robustness (`ar1`, `oracle`, `trimming`) and the power comparison (`power`) — Tables `ar1-sizepower`, `serial`, `trimming`, Table/Figure `power`. |
 | `replicate_section6.py` | Driver | **Section 6**: the PPP application — admissibility `sweep`, sieve-AR(p) `boot`, median-unbiased `hl`, and the two `figures`. |
 | `run_model_lb.py` | Tool | **Apply the test to your own series** (see §3 below). |
+| `pesaran_cd.py` | Diagnostic | **Section 6 footnote**: the Pesaran (2004, 2015) cross-sectional-dependence (CD) test, run on the OLS residuals of the eight per-currency, strictly univariate Model LB fits (no panel model is estimated). Reports the CD statistic, its p-value, and mean pairwise `|rho_ij|`, plus a first-differenced robustness check against residual serial correlation. Quantifies the dependence induced by the common US-dollar numeraire; under exogenous level breaks each test's limiting law is invariant to that common component, so the diagnostic is reported but **not used for inference**. Run directly: `python pesaran_cd.py` (defaults to `ppp_panel.csv`/`exog_dates.csv`) or `python pesaran_cd.py --selftest` (3 gates: size, common-factor power, design). |
 
 Supporting modules called by the drivers (not run directly): `mlb_kernel.py`
 (pure-Python fallback for `mlb_core.py` when numba is unavailable), `robustness.py`
-and `size_power_cbar_comparison.py` (Section 5), `ppp_sweep_bis.py`,
+and `size_power_cbar_comparison.py` (Section 5), and `ppp_sweep_bis.py`,
 `boot_ppp_cbar.py`, `hl_median_unbiased.py`, `figs_ppp.py`
-(Section 6), and `pesaran_cd.py` (a stand-alone cross-sectional-dependence
-diagnostic: the Pesaran CD test on the Model LB residuals of the PPP panel;
-reported in Section 6 but not used for inference). The trend-break comparison curve in Section 5 uses the CKP
+(Section 6). The trend-break comparison curve in Section 5 uses the CKP
 response surface, **inlined** in `size_power_cbar_comparison.py`; the package has no
 dependency on the companion growth-empirics paper.
 

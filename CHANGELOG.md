@@ -5,6 +5,31 @@ follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [semantic](https://semver.org/). Version and archival DOIs are recorded in
 `CITATION.cff`.
 
+## [1.1.1] — 2026-07-08
+
+Documentation-completeness fix: the v1.1.0 archive omitted `pesaran_cd.py`
+from the shipped files even though it was already used to produce the Section
+6 cross-sectional-dependence number reported in the paper. No numerical
+result changes; no other module touched.
+
+### Added
+- `pesaran_cd.py` -- a stand-alone Pesaran (2004, 2015) cross-sectional
+  dependence diagnostic. Computes the CD statistic on the residuals of the
+  strictly univariate Model LB fits of the PPP panel (no panel model is
+  estimated); reports the average pairwise residual correlation and the CD on
+  first differences as a serial-correlation robustness check. It quantifies the
+  dependence induced by the common US-dollar numeraire that is discussed in
+  Section 6; inference is not built on it. Validated by
+  `python pesaran_cd.py --selftest` (size ~0.05 under independence; power 1.0
+  under a common factor; Model LB design gate).
+- `README.md` and `.zenodo.json` now mention `pesaran_cd.py` alongside the
+  other supporting modules.
+
+### Verified
+- All 13 modules byte-compile; every local `import` and `runpy` call resolves to
+  an existing module; no orphan CSV string references; no residual Portuguese or
+  version suffixes in source.
+
 ## [1.1.0] — 2026-07-06
 
 Repository hygiene release: no numerical result changes. Every figure, table,

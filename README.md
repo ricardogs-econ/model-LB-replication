@@ -26,7 +26,9 @@ Supporting modules called by the drivers (not run directly): `mlb_kernel.py`
 (pure-Python fallback for `mlb_core.py` when numba is unavailable), `robustness.py`
 and `size_power_cbar_comparison.py` (Section 5), `ppp_sweep_bis.py`,
 `boot_ppp_cbar.py`, `hl_median_unbiased.py`, `figs_ppp.py`
-(Section 6). The trend-break comparison curve in Section 5 uses the CKP
+(Section 6), and `pesaran_cd.py` (a stand-alone cross-sectional-dependence
+diagnostic: the Pesaran CD test on the Model LB residuals of the PPP panel;
+reported in Section 6 but not used for inference). The trend-break comparison curve in Section 5 uses the CKP
 response surface, **inlined** in `size_power_cbar_comparison.py`; the package has no
 dependency on the companion growth-empirics paper.
 
@@ -129,6 +131,7 @@ Validation gates (run these first to confirm the build):
 python mlb_core.py --selftest            # size ~ 0.05; |dMZt| ~ 1e-16; power > size
 python replicate_section5.py --selftest  # 7 pure-logic gates (no numba needed)
 python hl_median_unbiased.py --selftest  # 8 gates (median function, coverage, ...)
+python pesaran_cd.py --selftest          # 3 gates (size, common-factor power, design)
 ```
 
 ---

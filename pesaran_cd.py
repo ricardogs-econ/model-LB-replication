@@ -131,7 +131,7 @@ def cd_statistic(rho: np.ndarray, Tij: np.ndarray) -> dict:
 # ============================================================================
 # Data loading
 # ============================================================================
-def load_panel(path: str, col: str):
+def load_panel(path: str, col: str, start_year: int = 0):
     """Load {currency: (years, series)} from a long-format CSV with columns
     currency, year, <col>. Series sorted by year."""
     import csv
@@ -141,7 +141,10 @@ def load_panel(path: str, col: str):
         if col not in rd.fieldnames:
             raise SystemExit(f"Column '{col}' not in {path}; have {rd.fieldnames}")
         for r in rd:
-            rows[r["currency"]].append((int(r["year"]), float(r[col])))
+            yr = int(r["year"])
+            if yr < start_year:
+                continue
+            rows[r["currency"]].append((yr, float(r[col])))
     out = {}
     for cur, pairs in rows.items():
         pairs.sort()
@@ -168,8 +171,8 @@ def load_dates(path: str):
 # ============================================================================
 # Driver
 # ============================================================================
-def run(panel_path: str, dates_path: str, col: str, difference: bool = False):
-    panel = load_panel(panel_path, col)
+def run(panel_path: str, dates_path: str, col: str, difference: bool = False, start_year: int = 0):
+    panel = load_panel(panel_path, col, start_year=start_year)
     dates = load_dates(dates_path)
 
     U = {}
@@ -189,6 +192,8 @@ def run(panel_path: str, dates_path: str, col: str, difference: bool = False):
     print("=" * 60)
     print(f"  Pesaran CD test on Model LB residuals{tag}")
     print("=" * 60)
+    if start_year:
+        print(f"  sample start : {start_year} (post-Bretton-Woods float)" )
     print(f"  N currencies : {len(names)}")
     print(f"  break dummies: " + ", ".join(f"{c}:{m}" for c, m, _ in info))
     print(f"  pairs        : {res['n_pairs']}")
@@ -261,15 +266,19 @@ def main(argv=None):
     ap.add_argument("--panel", default="ppp_panel.csv")
     ap.add_argument("--dates", default="exog_dates.csv")
     ap.add_argument("--col", default="q", help="residual target column (log real rate)")
+    ap.add_argument("--start", type=int, default=1973,
+                    help="first sample year (1973 = post-Bretton-Woods float, T=52; "
+                         "1970 reproduces the wider T=55 window). Matches "
+                         "boot_ppp_cbar.py --start-year.")
     ap.add_argument("--difference", action="store_true",
                     help="CD on first differences of residuals (serial-correlation robustness)")
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args(argv)
     if args.selftest:
         return _selftest()
-    run(args.panel, args.dates, args.col, difference=False)
+    run(args.panel, args.dates, args.col, difference=False, start_year=args.start)
     print()
-    run(args.panel, args.dates, args.col, difference=True)   # robustness
+    run(args.panel, args.dates, args.col, difference=True, start_year=args.start)   # robustness
     return 0
 
 

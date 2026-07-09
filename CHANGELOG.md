@@ -15,7 +15,8 @@ CD=12.88/8.12 (levels/diff) to **CD=14.04/8.65**, signed mean correlation
 0.328→0.368, and the count of negatively correlated pairs drops from 6 to 4 of
 28 (3 involving the Swiss franc, down from 5). No other module or data file
 affected; the conclusion (strong positive dependence) is unchanged and, if
-anything, strengthened.
+anything, strengthened. Archived on Zenodo (version DOI
+`10.5281/zenodo.21282961`).
 
 ### Fixed
 - `pesaran_cd.py` gains a `--start` option (default `1973`, matching

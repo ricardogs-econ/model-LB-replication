@@ -5,6 +5,24 @@ follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [semantic](https://semver.org/). Version and archival DOIs are recorded in
 `CITATION.cff`.
 
+## [1.1.2] — 2026-07-09
+
+Bug fix: `pesaran_cd.py` computed the cross-sectional-dependence statistic over
+the full 1970-2024 window (T=55), while the rest of the package (and the paper)
+defines the sample as 1973-2024 (T=52, post-Bretton-Woods float; see
+`boot_ppp_cbar.py --start-year`). On the correct window the numbers move from
+CD=12.88/8.12 (levels/diff) to **CD=14.04/8.65**, signed mean correlation
+0.328→0.368, and the count of negatively correlated pairs drops from 6 to 4 of
+28 (3 involving the Swiss franc, down from 5). No other module or data file
+affected; the conclusion (strong positive dependence) is unchanged and, if
+anything, strengthened.
+
+### Fixed
+- `pesaran_cd.py` gains a `--start` option (default `1973`, matching
+  `boot_ppp_cbar.py --start-year`) that filters `ppp_panel.csv` before
+  computing residuals and the CD statistic. Previously the script had no
+  window filter and silently used the full 1970-2024 panel.
+
 ## [1.1.1] — 2026-07-08
 
 Documentation-completeness fix: the v1.1.0 archive omitted `pesaran_cd.py`

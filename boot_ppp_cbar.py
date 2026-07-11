@@ -4,7 +4,8 @@
 boot_ppp_cbar_production.py
 ===========================
 PPP application (OECD-core/USD, Model LB): production calibration of the
-extended response surface  (cbar*(m,T,p), cv(m,T,p))  under a sieve-AR(p)
+extended response surface  (cbar*(m,T,p), cv(m,T,p))  under an AR(p)
+nuisance-family
 innovation, plus the preliminary empirical block. Numba throughout.
 
 EQUIVALENCE CONTRACT.  Every Monte Carlo convention is inherited from
@@ -58,7 +59,7 @@ Usage (local, Windows):
   python boot_ppp_cbar_production.py --full --hi --raw  # 2x reps + raw draws
 """
 from __future__ import annotations
-import argparse, hashlib, itertools, json, os, sys, time, warnings
+import argparse, hashlib, itertools, json, os, sys, time, warnings, zlib
 from pathlib import Path
 import numpy as np
 
@@ -452,7 +453,17 @@ def empirical_block(K, gen_arp, P, panel_csv, diag_csv, surface_rows, out_dir,
                 or surf.get(("2", Tk, "1", "maic")))
         cbar_cal = float(srow["cbar_star"]) if srow else -7.0
         # config-faithful CV at the REAL break positions, AR(p_hat) innovation
-        seed_cv = (P["seed_base"] + hash(cur) % 10**6 + 104729 * p_hat) % (2**63 - 1)
+        # Deterministic seed BY CONFIGURATION (v1.1.3b): the critical value
+        # is a property of the configuration (break positions, m, p, T), not
+        # of the currency label, so identical configurations must share the
+        # same simulated null and hence the same cv by construction (CHF and
+        # JPY: m=1, break 1985, p=1; NOK and SEK: m=2, 1985+1992, p=2).
+        # zlib.crc32 replaces the built-in hash(), whose string salting
+        # (PYTHONHASHSEED, randomized per process since Python 3.3) silently
+        # broke bit-for-bit reproducibility.
+        cfg_str = f"T{T}-m{m}-bp{'-'.join(map(str, bp.tolist()))}-p{p_hat}"
+        seed_cv = (P["seed_base"] + zlib.crc32(cfg_str.encode("utf-8")) % 10**6
+                   + 104729 * p_hat) % (2**63 - 1)
         pt0, mzt0, _ = stats_under(K, gen_arp, T, bp, 0.0, cbar_cal,
                                    K["method_code"]["maic"], P["R_cv_emp"], seed_cv,
                                    kmax, p_hat, P["pac1"], burn)
@@ -697,6 +708,24 @@ def main():
         for d in deltas:
             print(f"  DELTA m={d['m']} p={d['p']}: cbar*(AR)={d['cbar_star_p']:.3f} "
                   f"vs iid {d['cbar_star_iid']:.3f} -> {d['delta']:+.3f}")
+
+    if args.empirical and not surface:
+        # v1.1.3: --empirical WITHOUT --quick/--full previously ran with an
+        # EMPTY in-memory surface, so the (m,T,p) lookup missed every key and
+        # silently fell back to cbar = -7.0 for every currency. Load the
+        # surface written by a prior --full run instead; refuse to proceed
+        # silently if none is found.
+        import csv as _csv
+        surf_csv = out_dir / "calib" / "surface_ppp_boot.csv"
+        if surf_csv.exists():
+            with open(surf_csv) as fh:
+                surface = list(_csv.DictReader(fh))
+            print(f"[empirical] surface loaded from {surf_csv} "
+                  f"({len(surface)} rows)")
+        else:
+            sys.exit(f"[empirical] no in-memory surface and {surf_csv} not "
+                     "found: run --full once, or pass --out pointing to the "
+                     "output directory of a previous --full run.")
 
     if args.empirical:
         print("[empirical] test block (break dates resolved below):")

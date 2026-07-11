@@ -5,6 +5,68 @@ follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [semantic](https://semver.org/). Version and archival DOIs are recorded in
 `CITATION.cff`.
 
+## [1.1.3] — 2026-07-11
+
+Reproducibility fix: two seed constructions used Python's built-in `hash()` on
+strings, which has been salted per process since Python 3.3 (`PYTHONHASHSEED`,
+randomized by default and pinned nowhere in this package). The affected
+outputs were therefore NOT bit-for-bit reproducible across runs, contradicting
+the "fixed seeds"/"deterministic seeds" statements in the paper. The Monte
+Carlo noise involved is small but larger than the naive binomial bound
+suggests — the per-replication redraw of the AR(p) nuisance coefficients
+fattens the null's lower tail, giving the 5% quantile at R=20,000 a
+seed-to-seed scatter of ≈0.01–0.02 in MZt units (observed shifts across
+seedings up to ±0.04) — and no verdict flips (the tightest margin, CAD, is
+≈0.05). The determinism claim required the fix and one canonical rerun of
+the empirical block; that rerun (2026-07-11) is now the canonical source of
+the paper's Table 8 column (III) and Table 6 digits.
+
+### Verified
+- Cross-platform bit-for-bit reproducibility of the configuration-seeded
+  empirical block: the author's Windows run (numba 0.65.1) and an
+  independent Linux run (numba 0.66.0, numpy 2.4.4) agree in EVERY field of
+  `ppp_empirical_prelim.csv` for all 8 currencies.
+- Identical configurations share identical critical values by construction
+  (CHF = JPY at -2.0978; NOK = SEK at -2.1503); AUD's 4-decimal agreement
+  with the previous currency-seeded run was checked at full precision
+  (-2.4353295542 vs -2.4353332680): a 3.7e-6 coincidence of independent
+  quantile draws, not a seeding defect.
+
+### Fixed
+- `boot_ppp_cbar.py`: the seed of the configuration-faithful critical values
+  (`empirical_block`) now (i) uses `zlib.crc32` instead of the salted
+  built-in `hash()`, and (ii) is keyed on the CONFIGURATION string
+  `(T, m, break positions, p)` rather than on the currency label, so that
+  identical configurations share the same simulated null and hence the same
+  critical value by construction (CHF and JPY; NOK and SEK). Affects the
+  Table 8 column (III) critical values (regenerate with `--empirical`;
+  rerun is canonical).
+- `mlb_core.py`: the bootstrap standard errors of the critical-value
+  quantiles seeded with `hash(k)` on the statistic label; now
+  `zlib.crc32(k.encode())`. Affects only the reported CV standard errors in
+  the companion files, not the critical values themselves.
+
+- `boot_ppp_cbar.py`: `--empirical` without `--quick`/`--full` ran with an
+  empty in-memory surface, so the `(m,T,p)` lookup missed every key and
+  silently fell back to `cbar = -7.0` for every currency. It now loads
+  `<out>/calib/surface_ppp_boot.csv` from a prior `--full` run, and exits
+  with an explicit message if none is found (no silent fallback). This makes
+  the deterministic rerun of the empirical block cheap: the calibration
+  surface itself is seeded by `config_seed` and was never affected by the
+  `hash()` bug.
+
+### Added
+- `dependence_bound.py`: dependence-adjusted probability of zero rejections
+  across the eight currencies under a one-factor equicorrelated Gaussian with
+  the estimated mean pairwise correlation (Section 6.3 of the paper);
+  deterministic quadrature, no seeds. Output: `dependence_bound.csv`
+  (P(zero|H1) ≈ 0.18–0.24 at power 0.30–0.34 and ρ ∈ {0.37, 0.41}, against
+  0.036–0.058 under independence).
+
+### Unchanged
+- `hl_median_unbiased.py` (Table 9) and `robustness.py` (the (m,T) surface)
+  use fixed integer seeds throughout and were never affected.
+
 ## [1.1.2] — 2026-07-09
 
 Bug fix: `pesaran_cd.py` computed the cross-sectional-dependence statistic over

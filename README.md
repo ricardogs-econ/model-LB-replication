@@ -19,9 +19,10 @@ on the identical implementation and the identical long-run-variance convention.
 | `mlb_core.py` | **Kernel library** (not run directly). The single implementation of the Model LB test and its finite-sample calibration: the `@njit` numerical kernels, the calibration driver `run_grid`/`aggregate`, the single-series interface `run_test`, and the validation gates (`python mlb_core.py --selftest`). Everything else imports from here. | — |
 | `replicate_section3_4.py` | Driver | **Sections 3–4**: the calibration surface `c-bar(m,T)` with the critical values of the five M-class statistics, and Figure `cbar`. Writes `cbar_surface.csv` (the input to Sections 5 and 6). |
 | `replicate_section5.py` | Driver | **Section 5**: robustness (`ar1`, `oracle`, `trimming`) and the power comparison (`power`) — Tables `ar1-sizepower`, `serial`, `trimming`, Table/Figure `power`. |
-| `replicate_section6.py` | Driver | **Section 6**: the PPP application — admissibility `sweep`, sieve-AR(p) `boot`, median-unbiased `hl`, and the two `figures`. |
+| `replicate_section6.py` | Driver | **Section 6**: the PPP application — admissibility `sweep`, AR(p) nuisance-family `boot`, median-unbiased `hl`, and the two `figures`. |
 | `run_model_lb.py` | Tool | **Apply the test to your own series** (see §3 below). |
 | `pesaran_cd.py` | Diagnostic | **Section 6 footnote**: the Pesaran (2004, 2015) cross-sectional-dependence (CD) test, run on the OLS residuals of the eight per-currency, strictly univariate Model LB fits (no panel model is estimated). Reports the CD statistic, its p-value, and mean pairwise `|rho_ij|`, plus a first-differenced robustness check against residual serial correlation. Quantifies the dependence induced by the common US-dollar numeraire; under exogenous level breaks each test's limiting law is invariant to that common component, so the diagnostic is reported but **not used for inference**. Run directly: `python pesaran_cd.py` (defaults to `ppp_panel.csv`/`exog_dates.csv`) or `python pesaran_cd.py --selftest` (3 gates: size, common-factor power, design). |
+| `dependence_bound.py` | Diagnostic | **Section 6.3**: the dependence-adjusted probability of zero rejections across the eight currencies under a one-factor equicorrelated Gaussian at the estimated mean pairwise correlation (`pesaran_cd.py`'s $\bar\rho\in\{0.37,0.41\}$) and the feasible power range (0.30-0.34); deterministic quadrature, no seeds. Run directly: `python dependence_bound.py` -> `dependence_bound.csv`. |
 
 Supporting modules called by the drivers (not run directly): `mlb_kernel.py`
 (pure-Python fallback for `mlb_core.py` when numba is unavailable), `robustness.py`
@@ -54,7 +55,7 @@ the selection; it is fully reconstructible from `ppp_panel.csv` and
 
 **Two Monte Carlo / bootstrap notes.** The package runs three distinct
 resampling/simulation procedures — parametric Monte Carlo calibration (§3–4),
-sieve-AR(p) bootstrap (§6 calibration), and wild bootstrap (§6 half-life). They
+AR(p) nuisance-family calibration (§6 calibration), and wild bootstrap (§6 half-life). They
 complement each other and are never interchangeable; see `MC_vs_BOOTSTRAP.md`
 for the exact assumptions, interfaces, and which number each one produces.
 
@@ -117,7 +118,7 @@ python replicate_section5.py power                  # Table/Figure `power`
 
 # (3) Section 6 -- PPP application
 python replicate_section6.py sweep --fetch          # admissibility funnel (see §5 below)
-python replicate_section6.py boot                   # sieve-AR(p) calibration
+python replicate_section6.py boot                   # AR(p) nuisance-family calibration
 python replicate_section6.py hl                     # half-lives + decomposition
 python replicate_section6.py figures                # the two Section-6 figures
 #     or the whole application:

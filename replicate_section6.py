@@ -10,7 +10,7 @@ WHAT IT PRODUCES  (stages, run in order unless one is selected)
     sweep   Exhaustive admissibility sweep over the BIS currency universe
             (gates C1-C5): the funnel and the per-currency gate table.
             -> ppp_sweep/funnel.txt, ppp_sweep/sweep_gates.csv
-    boot    Sieve-AR(p) bootstrap calibration of the applied pair
+    boot    AR(p) nuisance-family calibration of the applied pair
             (c-bar*(m,T,p), cv(m,T,p)) for the eight admissible currencies.
             -> boot_out/ (reads the calibration surface of Section 3-4)
     hl      Median-unbiased (Andrews-Chen) half-lives with grid-t and wild

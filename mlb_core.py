@@ -40,7 +40,7 @@ REFERENCE
 ================================================================================
 """
 from __future__ import annotations
-import os, sys, time, pickle, argparse, warnings, itertools
+import os, sys, time, pickle, argparse, warnings, itertools, zlib
 import numpy as np
 
 # -----------------------------------------------------------------------------
@@ -678,7 +678,7 @@ def calibrate_config_sigma(T, m, lambdas, P, sigma2_method):
         cvs[k] = {q: float(np.percentile(a, float(q[:-1])))
                   for q in ['1%', '2.5%', '5%', '10%']}
         cvs_se[k] = {q: se_quantile_bootstrap(a, float(q[:-1]),
-                     seed=cfg_seed + (hash(k) % 1000)) for q in ['1%', '2.5%', '5%', '10%']}
+                     seed=cfg_seed + (zlib.crc32(k.encode("utf-8")) % 1000)) for q in ['1%', '2.5%', '5%', '10%']}
 
     # ---- 3) Invariance sanity (Lemma): beta=0 vs beta=10, identical stat -----
     inv_dev = _invariance_check(T, break_pos, cbar_star, cfg_seed, mc, kmax)

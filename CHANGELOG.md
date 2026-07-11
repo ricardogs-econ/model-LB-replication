@@ -19,7 +19,8 @@ seed-to-seed scatter of ≈0.01–0.02 in MZt units (observed shifts across
 seedings up to ±0.04) — and no verdict flips (the tightest margin, CAD, is
 ≈0.05). The determinism claim required the fix and one canonical rerun of
 the empirical block; that rerun (2026-07-11) is now the canonical source of
-the paper's Table 8 column (III) and Table 6 digits.
+the paper's Table 8 column (III) and Table 6 digits. Archived on Zenodo
+(version DOI `10.5281/zenodo.21315201`).
 
 ### Verified
 - Cross-platform bit-for-bit reproducibility of the configuration-seeded

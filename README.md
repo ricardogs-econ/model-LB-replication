@@ -25,6 +25,7 @@ on the identical implementation and the identical long-run-variance convention.
 | `dependence_bound.py` | Diagnostic | **Section 6.3**: the dependence-adjusted probability of zero rejections across the eight currencies under a one-factor equicorrelated Gaussian at the estimated mean pairwise correlation (`pesaran_cd.py`'s $\bar\rho\in\{0.37,0.41\}$) and each currency's own feasible power at its applied AR order (0.30 for the five at $p=1$, 0.31 for the three at $p=2$; heterogeneous, not a single value); deterministic quadrature, no seeds. Run directly: `python dependence_bound.py` -> `dependence_bound.csv`. |
 | `dependence_count_pmf.py` | Diagnostic | **Section 6.3**: the full probability mass function of the rejection count (not just $P(0)$) under the same heterogeneous one-factor model, by exact enumeration of the $2^8$ rejection patterns plus quadrature over the common factor. Shows zero rejections is the *modal* outcome under the estimated dependence, versus a mode of two under independence. Deterministic. Run directly: `python dependence_count_pmf.py`. |
 | `select_ar_order.py` | Tool | Regenerates `ppp_ar_diagnostic.csv`: BIC and general-to-specific AR-order selection on the constant-mean and level-break residuals of `ppp_panel.csv`, common-sample comparison across `k=1..kmax`. Deterministic (OLS, no seeds); reuses `hl_median_unbiased.py`'s own `build_Z`/`detrend`/`adf_fit` kernels so the residual construction matches the rest of the package. Run directly: `python select_ar_order.py --start 1973 --kmax 10`. |
+| `check_lam_spread.py` | Diagnostic | **Section 4.3**: the $(m,T)$-lookup $R^2$, within-cell $\lambda$-spread, and the $\lambda$-only CKP surface's $R^2$/condition number at $m=1$ that justify a lookup table over a $\lambda$ polynomial. Thin CLI wrapper around `mlb_core.surface_diagnostics` (single implementation, not a second copy). Run directly: `python check_lam_spread.py --csv cbar_surface.csv`. |
 
 Supporting modules called by the drivers (not run directly): `mlb_kernel.py`
 (pure-Python fallback for `mlb_core.py` when numba is unavailable), `robustness.py`
@@ -41,7 +42,8 @@ dependency on the companion growth-empirics paper.
 | `ppp_panel.csv` | input (public data) | Section 6 (`boot`, `hl`, `figures`) | built from BIS + World Bank | **yes** |
 | `exog_dates.csv` | input (public data) | Sections 6 (`sweep`, `boot`, `hl`, `figures`) | primary central-bank sources | **yes** |
 | `ppp_ar_diagnostic.csv` | input (derived) | Section 6 (`boot`, `hl`) | AR(p) lag selection on the panel (see below) | **yes** for `hl`/`boot` |
-| `cbar_surface.csv` | inter-section bridge | Sections 5–6, `mlb_core`, `run_model_lb` | **`replicate_section3_4.py --full`** | yes — regenerate (bundled copy is a 3-cell placeholder) |
+| `cbar_surface.csv` | inter-section bridge | Sections 5–6, `mlb_core`, `run_model_lb` | **`replicate_section3_4.py --full`** | bundled: the full production surface (427 configs, 46 `(m,T)` cells, `m=0..5`, `T=30..300`, both `sigma2_method`s) — regenerate only to reproduce it from scratch |
+| `cbar_applied_T52.csv` | reference (legacy) | none (kept for reference only) | superseded 3-cell `T=52` placeholder, retained under this name after `cbar_surface.csv` was replaced with the full surface | no |
 
 Files the pipeline *generates* and that are therefore NOT shipped as inputs
 (they are in `.gitignore`): `hl_results.csv` and `hl_results_wild.csv`

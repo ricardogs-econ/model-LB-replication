@@ -137,10 +137,11 @@ def fig_hl_forest(hl, hlw, out_path, xmax=80.0):
         lb_lo = scalar_hl(float(rw["alpha_ci_lo_LB"]))
         # The infinite/finite classification of the upper limit is the
         # includes-one FLAG (grid point alpha=1.00 accepted), not the largest
-        # sub-unity grid point stored in alpha_ci_hi: for GBP under the wild
-        # scheme the flag is 1 while alpha_ci_hi=0.995 is finite, and mapping
-        # the column instead of the flag closes an interval the paper reports
-        # as [1.2, inf). Same rule applied to the MP (recursive) side.
+        # sub-unity grid point stored in alpha_ci_hi: when the persistence CI
+        # touches the unit root, alpha_ci_hi is still a finite sub-1 grid
+        # point (the search grid's ceiling), and mapping that column instead
+        # of the flag would wrongly render an interval the paper reports as
+        # unbounded. Same rule applied to the MP (recursive) side.
         lb_hi = (np.inf if int(float(rw.get("LB_includes_one", 0) or 0)) == 1
                  else scalar_hl(float(rw["alpha_ci_hi_LB"])))
         mp_lo = scalar_hl(float(r["alpha_ci_lo_MP"]))
@@ -188,6 +189,12 @@ def fig_hl_forest(hl, hlw, out_path, xmax=80.0):
     ax.text(0.012, 0.02, r"$^{\ast}$ CI collapses to bounded under LB",
             transform=ax.transAxes, fontsize=7, style="italic")
     fig.tight_layout()
+    # tight_layout() sizes the axes box itself but does not reliably reserve
+    # room for the "collapse" annotation, which is drawn outside the axes
+    # (anchored past the data range); pin the right margin explicitly so the
+    # label has guaranteed space regardless of renderer/font metrics, rather
+    # than relying solely on savefig's post-hoc bbox_inches="tight" clipping.
+    fig.subplots_adjust(right=0.80)
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
 

@@ -24,7 +24,7 @@
 #
 # EQUIVALENCE.  The deterministic detrending (constant + level dummies at the
 # exogenous break positions) is built exactly as in boot_ppp_cbar_production.py
-# / the the numba kernel (searchsorted on the break years, DU_j = 1{t >= tau_j}), so
+# / the numba kernel (searchsorted on the break years, DU_j = 1{t >= tau_j}), so
 # the residual u_t here is the same object whose AR(1) correlation the boot
 # reports as rho_LB.  The AR(p)/median-unbiased/grid-bootstrap machinery is new
 # and self-contained (numba-accelerated), and does not touch the GLS/M-statistic
@@ -36,10 +36,17 @@
 # median-unbiased alpha, but a CI for alpha that includes 1).  This module
 # reports the CI honestly; it does not convert non-rejection into a PPP verdict.
 #
-# Usage:
+# Usage (production, both grid-t bootstrap schemes -- Table 9):
 #   python hl_median_unbiased.py --panel ppp_panel.csv --dates exog_dates.csv \
-#          --diag ppp_ar_diagnostic.csv --out hl_results.csv
+#          --diag ppp_ar_diagnostic.csv --start-year 1973 --B 20000 \
+#          --boot wild --out hl_results_wild.csv        # reported LB column
+#   python hl_median_unbiased.py --panel ppp_panel.csv --dates exog_dates.csv \
+#          --diag ppp_ar_diagnostic.csv --start-year 1973 --B 20000 \
+#          --boot recursive --out hl_results.csv         # MP baseline
 #   python hl_median_unbiased.py --selftest        # validation gates only
+#
+# The defaults (B=999, nsim=1500) are a fast smoke test, not the production
+# replication counts above.
 # =============================================================================
 from __future__ import annotations
 import argparse, csv, sys, time
@@ -571,9 +578,11 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--panel", default="ppp_panel.csv")
-    ap.add_argument("--start-year", type=int, default=1970,
+    ap.add_argument("--start-year", type=int, default=1973,
                     help="first year of the window; observations before it are "
-                         "dropped (set 1973 for the post-Bretton-Woods float).")
+                         "dropped (1973 = the post-Bretton-Woods float, the "
+                         "paper's sample; pass 1970 for the wider raw-panel "
+                         "window instead).")
     ap.add_argument("--dates", default="exog_dates.csv")
     ap.add_argument("--diag", default="ppp_ar_diagnostic.csv")
     ap.add_argument("--out", default="hl_results.csv")
@@ -601,6 +610,14 @@ def main():
     panel = load_panel(args.panel)
     dates = load_dates(args.dates)
     pmap = load_p(args.diag)
+
+    all_years = [o[0] for obs in panel.values() for o in obs
+                 if o[0] >= args.start_year]
+    Ts = sorted({sum(1 for o in panel[cur] if o[0] >= args.start_year)
+                for cur in panel})
+    t_str = str(Ts[0]) if len(Ts) == 1 else f"{Ts[0]}-{Ts[-1]}"
+    print(f"[config] window {args.start_year}-{max(all_years)} (T={t_str} per "
+          f"currency) | B={args.B} nsim={args.nsim} boot={args.boot}")
 
     rows = []
     print(f"{'cur':4}{'p':>2}{'m':>3} | "

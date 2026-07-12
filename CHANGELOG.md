@@ -5,6 +5,50 @@ follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [semantic](https://semver.org/). Version and archival DOIs are recorded in
 `CITATION.cff`.
 
+## [1.1.7] — 2026-07-12
+
+Reproducibility fix and archival completeness pass, found in a second
+independent audit. Most consequential: `hl_median_unbiased.py --start-year`
+defaulted to 1970, silently reproducing the wrong (pre-v1.1.2) window
+(T=55) whenever the flag was omitted -- the exact bug class already fixed
+in `pesaran_cd.py` (v1.1.2) and `ppp_ar_diagnostic.csv`'s AR-order selection
+(v1.1.4), just in a third module. Also archives the full `cbar_surface.csv`
+production surface (previously only a 3-cell placeholder shipped, despite
+the Data statement's promise that "every simulation output cited in the
+text" is included).
+
+### Fixed
+- `hl_median_unbiased.py`: `--start-year` default `1970` -> `1973` (the
+  paper's post-Bretton-Woods sample; the help text already said so, the
+  default didn't agree). Usage header replaced with the two full production
+  commands (`--boot wild`/`--boot recursive`, `--B 20000`), noting the
+  defaults (`B=999`, `nsim=1500`) are a smoke test, not production. Console
+  now echoes the effective configuration (window, T per currency, B, nsim,
+  boot scheme) before the per-currency table, so a wrong window no longer
+  passes silently. Typo "the the numba kernel" fixed.
+- `mlb_core.py`: `surface_diagnostics`'s anchor comments were stale
+  (0.89/~0.3/~0.15/~2e3); re-adjudicated against the production
+  `cbar_surface.csv` (427 configs, 46 cells): R2_mT=0.911, lam_spread=0.241,
+  R2_lambda_m1=0.163, cond=2162 -> comments now say 0.91/~0.24/~0.16/~2e3,
+  with an explicit provenance note.
+- `figs_ppp.py`: stale comment describing the includes-one-vs-alpha_ci_hi
+  rule via a GBP example that no longer holds after the AR-order fix (v1.1.4
+  moved GBP to p=1; its wild CI is now finite, not the unbounded case the
+  comment described) -- rewritten to state the rule generally. Forest plot
+  now also reserves the right margin explicitly via `subplots_adjust`
+  rather than relying only on `tight_layout()` + `savefig`'s post-hoc
+  `bbox_inches="tight"` for the "collapse" annotation's space.
+
+### Added
+- `cbar_surface.csv` now ships the **full** production surface (427 configs,
+  46 `(m,T)` cells, `m=0..5`, `T=30..300`, both `sigma2_method`s) instead of
+  a 3-cell placeholder. The previous placeholder is kept for reference as
+  `cbar_applied_T52.csv` (no code path consumes it).
+- `check_lam_spread.py`: reports the `(m,T)`-lookup `R^2`, within-cell
+  `lambda`-spread, and the `lambda`-only surface's `R^2`/condition number at
+  `m=1` (Section 4.3's justification for a lookup table over a `lambda`
+  polynomial). Thin wrapper around `mlb_core.surface_diagnostics`.
+
 ## [1.1.6] — 2026-07-12
 
 Cosmetic fix to `figs_ppp.py`: the "collapse" annotation on `fig_hl_forest.pdf`

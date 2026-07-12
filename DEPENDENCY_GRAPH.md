@@ -45,7 +45,7 @@ section3_4     section5       section6       (user CLI)        comparison.py
 
 | Artifact | Produced by | Consumed by | Distributed |
 |---|---|---|---|
-| `cbar_surface.csv` | `replicate_section3_4.py --full` | §5, §6, `mlb_core`, `run_model_lb`, `size_power_cbar_comparison` | yes (3-cell placeholder; regenerate) |
+| `cbar_surface.csv` | `replicate_section3_4.py --full` | §5, §6, `mlb_core`, `run_model_lb`, `size_power_cbar_comparison` | yes (full surface: 427 configs, 46 cells) |
 | `ppp_panel.csv` | BIS + World Bank build | §6 (`boot`, `hl`, `figures`) | yes |
 | `exog_dates.csv` | primary central-bank sources | §6 (`sweep`, `boot`, `hl`, `figures`) | yes |
 | `ppp_ar_diagnostic.csv` | AR(p) selection on the panel | §6 (`boot`, `hl`) | yes |

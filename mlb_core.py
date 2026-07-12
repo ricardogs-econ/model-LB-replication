@@ -1033,7 +1033,13 @@ def fit_intercepts_1_over_T(df, sigma2_method='const'):
 def surface_diagnostics(P, df, sigma2_method='const'):
     """R^2 of the (m,T) lookup; R^2 and condition number of the lambda-only CKP
     surface for m=1; rank deficiency note for m>=2. Sources the paper's
-    R^2=0.89, R^2~0.15, condition-number ~2e3 numbers."""
+    R^2=0.91, lambda-spread~0.24, R^2~0.16, condition-number ~2e3 numbers.
+
+    Provenance: adjudicated 2026-07-12 against the production cbar_surface.csv
+    (427 configs, 46 (m,T) cells; const method): R2_mT=0.911, lam_spread=0.241,
+    R2_lambda_m1=0.163, cond_lambda_m1=2162. lam_spread is the mean absolute
+    within-(m,T)-cell deviation of cbar_otimo from the cell mean, over m>=1,
+    const branch."""
     d = df[df.sigma2_method == sigma2_method].reset_index(drop=True)
     y = d.cbar_otimo.values
 
@@ -1070,9 +1076,9 @@ def surface_diagnostics(P, df, sigma2_method='const'):
                                       .drop_duplicates().shape[0]) if len(d5) else 0
 
     print(f"\n[Surface diagnostics, {sigma2_method}]")
-    print(f"  R^2 of (m,T) lookup           = {diag['r2_mT']:.3f}   (paper: 0.89)")
-    print(f"  within-cell |lambda| spread   = {diag['lam_spread']:.3f}   (paper: ~0.3)")
-    print(f"  R^2 lambda-only surface (m=1) = {diag['r2_lambda_m1']:.3f}   (paper: ~0.15)")
+    print(f"  R^2 of (m,T) lookup           = {diag['r2_mT']:.3f}   (paper: 0.91)")
+    print(f"  within-cell |lambda| spread   = {diag['lam_spread']:.3f}   (paper: ~0.24)")
+    print(f"  R^2 lambda-only surface (m=1) = {diag['r2_lambda_m1']:.3f}   (paper: ~0.16)")
     print(f"  cond. number lambda surf (m=1)= {diag['cond_lambda_m1']:.1f}   (paper: ~2e3)")
     print(f"  m=5 distinct break configs    = {diag['m5_distinct_configs']}   "
           f"(61-term CKP form is rank-deficient)")

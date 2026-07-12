@@ -5,6 +5,51 @@ follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [semantic](https://semver.org/). Version and archival DOIs are recorded in
 `CITATION.cff`.
 
+## [1.1.4] — 2026-07-12
+
+Correctness fix, headline result affected: `ppp_ar_diagnostic.csv`'s AR-order
+column (`k_bic_cq`, the only column any downstream script reads) was selected
+by BIC on the 1970-2024 (T=55) window and was never re-run after the sample
+was fixed to 1973-2024 (T=52) in v1.1.2 -- no script to regenerate it had ever
+shipped. Added `select_ar_order.py` (reusing `hl_median_unbiased.py`'s own
+`build_Z`/`detrend`/`adf_fit` kernels for methodological consistency) and
+re-selected on the correct window: AUD, GBP, and NZD move from `p=4` to
+`p=1` (decisively -- BIC is monotonically worse at every higher lag for
+AUD/NZD, and still a clear call for GBP); CAD, CHF, JPY, NOK, SEK are
+unchanged (`p=2,1,1,2,2`), which is itself a check that the correct-window
+selection isn't just noise. No currency selects `p=4` any longer.
+
+Re-running the empirical block and the half-life module with the corrected
+diagnostic file changes the paper's headline persistence finding: the
+half-life 95% CI collapse count drops from 5 of 8 currencies to 3 of 8 (AUD,
+GBP, and NZD no longer collapse from unbounded to bounded, because their
+constant-mean interval is now already bounded -- it was artificially
+unbounded under the stale `p=4`, which over-fit AR coefficients to a short
+effective sample). Median half-life (constant-mean) moves from 8.4 to 7.0
+years; the level-break median is essentially unchanged (3.1 to 3.0). Unit-root
+verdicts remain unanimous non-rejection for all 8 currencies; the calibration
+surface (`tab:pppsurface`, `tab:cbar`, `tab:cv`) is unaffected, since it is
+computed for the general `(m,T,p)` grid independent of which currencies use
+which cell.
+
+### Fixed
+- `ppp_ar_diagnostic.csv`: regenerated on the correct 1973-2024 window
+  (`--start 1973 --kmax 10`), replacing the stale 1970-2024 selection.
+- `size_power_cbar_comparison.py`: `DEF` replication counts corrected
+  `R_cv`/`R_table`/`R_curve` 6000/6000/2500 -> 10000/10000/10000, and the
+  default (non-`--recalib`) calibrated c-bar literal corrected -8.7 -> -8.40,
+  matching the actual production script (`figuras_v6.py::tab_power`, never
+  shipped) that generated the published `tab:power`. The shipped script's old
+  defaults reproduced neither the replication count nor the c-bar the paper
+  reports; the predecessor `validacao_tab4_fig2.py` had the same defaults, so
+  this was inherited at the v1.1.0 rename, not introduced by it.
+
+### Added
+- `select_ar_order.py`: BIC and general-to-specific AR-order selection on the
+  constant-mean and level-break residuals of the PPP panel, common-sample
+  comparison across `k=1..kmax`. Deterministic (OLS-based, no seeds);
+  reproduces the shipped `ppp_ar_diagnostic.csv` exactly on re-run.
+
 ## [1.1.3] — 2026-07-11
 
 Reproducibility fix: two seed constructions used Python's built-in `hash()` on

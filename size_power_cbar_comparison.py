@@ -174,7 +174,7 @@ C_ALT    = -10.0                                     # I(0) alternative of colum
 C_GRID   = list(np.round(np.arange(0.0, -30.01, -2.0), 1))   # alternatives (power curve)
 CBAR_GRID = list(np.round(np.arange(-20.0, -2.9, 0.5), 2))   # grade p/ recalibrar c̄
 
-DEF = dict(R_cv=6000, R_table=6000, R_curve=2500, R_calib_cv=3000, R_calib_pow=3000)
+DEF = dict(R_cv=10000, R_table=10000, R_curve=10000, R_calib_cv=3000, R_calib_pow=3000)
 SPD = dict(R_cv=300,  R_table=300,  R_curve=150,  R_calib_cv=300,  R_calib_pow=300)
 
 
@@ -212,7 +212,10 @@ def rej_rate(cbar, c, cvval, n, seed, stat='mzt', beta=BETA, lambdas=LAM):
 def calibrate_cbar(R_cv, R_pow):
     """Reproduce the ERS tangency criterion for (T=60, m=2, LAM): c-bar* is the value where the
     POINT-OPTIMAL (PT) test attains power 0.5 against the alternative c=c-bar -- exactly the
-    criterion used in the surface calibration. Should recover ~ -8.7 (const).
+    criterion used in the surface calibration. This is an independent, lower-replication
+    cross-check; it is expected to land near, but not bit-exactly reproduce, the paper's
+    literal -8.40 (the lambda-exact tangency at (m,T)=(2,60), computed via the full production
+    surface search in replicate_section3_4.py and hardcoded here as the default).
     Note: the tangency is defined on PT, not MZt; using MZt would give a different c-bar."""
     best_c, best_gap = None, 1e9
     for cb in CBAR_GRID:
@@ -232,7 +235,8 @@ def main():
     ap.add_argument("--speed", action="store_true", help="fast test (small R)")
     ap.add_argument("--jobs", type=int, default=-1)
     ap.add_argument("--recalib", action="store_true",
-                    help="recompute c-bar via PT tangency (default: use -8.7)")
+                    help="recompute c-bar via PT tangency (default: use -8.40, the "
+                         "paper's lambda-exact tangency at (m,T)=(2,60))")
     ap.add_argument("--outdir", default=".")
     args = ap.parse_args()
     R = SPD if args.speed else DEF
@@ -246,11 +250,11 @@ def main():
     # ---- calibrated c-bar (Model 1) ---------------------------------------
     if args.recalib:
         cbar_calib = calibrate_cbar(R['R_calib_cv'], R['R_calib_pow'])
-        print(f"[calibrated c-bar] recomputed via PT tangency: {cbar_calib}  (reference: -8.7)")
+        print(f"[calibrated c-bar] recomputed via PT tangency: {cbar_calib}  (paper literal: -8.40)")
     else:
-        cbar_calib = -8.7
-        print(f"[calibrated c-bar] reference value (const, T=60, m=2): {cbar_calib}"
-              f"  [use --recalib to recompute via PT tangency]")
+        cbar_calib = -8.40
+        print(f"[calibrated c-bar] lambda-exact tangency (const, T=60, m=2): {cbar_calib}"
+              f"  [use --recalib for an independent lower-replication cross-check]")
 
     cbar_tb = round(c_bar_rs(BREAK_POS, T), 2)
     CBAR = {

@@ -397,7 +397,7 @@ def load_exog_dates(search_dirs):
     return None, None
 
 def empirical_block(K, gen_arp, P, panel_csv, diag_csv, surface_rows, out_dir,
-                    exog_dates=None, start_year=1970):
+                    exog_dates=None, start_year=1973):
     import csv as _csv
     # load panel
     panel = {}
@@ -540,13 +540,14 @@ def main():
                     help="calibrate a SINGLE cell at full resolution (sanity "
                          "check before --full); use with --m --T --p --nrep")
     ap.add_argument("--m", type=int, default=2, help="break count for --grid")
-    ap.add_argument("--T", type=int, default=55, help="sample length for --grid")
-    ap.add_argument("--start-year", type=int, default=1970,
+    ap.add_argument("--T", type=int, default=52, help="sample length for --grid")
+    ap.add_argument("--start-year", type=int, default=1973,
                     help="first year of the empirical window; the calibration "
                          "sample length T is derived as (last_year - start_year "
                          "+ 1) from the panel, and the empirical block filters "
-                         "year >= start_year. Set 1973 for the post-Bretton-Woods "
-                         "float (T=52); 1970 reproduces the wider window (T=55).")
+                         "year >= start_year. 1973 = the post-Bretton-Woods "
+                         "float (T=52), the paper's sample; pass 1970 for the "
+                         "wider raw-panel window (T=55) instead.")
     ap.add_argument("--p", type=int, default=1, help="AR order for --grid")
     ap.add_argument("--nrep", type=int, default=None,
                     help="override R_cv for --grid (R_pow set to nrep/2)")

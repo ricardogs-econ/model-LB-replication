@@ -5,6 +5,23 @@ follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [semantic](https://semver.org/). Version and archival DOIs are recorded in
 `CITATION.cff`.
 
+## [1.1.8] — 2026-07-12
+
+Same reproducibility fix as v1.1.7, in the module it was found alongside
+but not yet applied to: `boot_ppp_cbar.py`'s `--start-year` (main CLI) and
+`--T` (the `--grid` single-cell sanity-check mode) both defaulted to the
+pre-v1.1.2 window (1970 / T=55). Corrected to 1973 / T=52, matching the
+paper's sample and every other module's default. `empirical_block()`'s own
+function-level default (relevant only to direct, non-CLI callers) fixed the
+same way.
+
+### Fixed
+- `boot_ppp_cbar.py`: `--start-year` default `1970` -> `1973`; `--grid`'s
+  `--T` default `55` -> `52`; `empirical_block()`'s `start_year` keyword
+  default `1970` -> `1973`. Verified: `--quick` now reports `[window]
+  start_year=1973 -> calibration T=52` without needing `--start-year`
+  passed explicitly.
+
 ## [1.1.7] — 2026-07-12
 
 Reproducibility fix and archival completeness pass, found in a second

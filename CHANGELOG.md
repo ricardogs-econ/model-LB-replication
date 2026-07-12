@@ -16,7 +16,8 @@ power range -- did not describe the actual applied sample even after v1.1.4
 corrected the AR orders. Rewritten to use the true per-currency power
 (heterogeneous, not `power^8`): independence `P(zero|H1)` moves from 0.046
 to the exact 0.0552, and the dependence-adjusted figure from the stale
-0.18-0.24 to 0.21-0.23.
+0.18-0.24 to 0.21-0.23. Archived on Zenodo (version DOI
+`10.5281/zenodo.21321815`).
 
 ### Added
 - `dependence_count_pmf.py`: the full probability mass function of the

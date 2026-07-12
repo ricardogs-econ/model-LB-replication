@@ -12,21 +12,26 @@ WHAT IT COMPUTES
     dependence raises it. This script quantifies "raises it" under the
     simplest structure consistent with the estimated dependence: a one-factor
     equicorrelated Gaussian copula for the eight test statistics, with
-      - per-test power  p in {0.30, 0.325, 0.34}  (the feasible power at the
-        tangency, Table 6 of the paper), and
+      - per-currency power at the applied AR order (Table pppsurface): 0.30
+        for the five currencies at p=1 (AUD, CHF, GBP, JPY, NZD), 0.31 for
+        the three at p=2 (CAD, NOK, SEK) -- no currency requires p>2, so
+        these are the only two feasible powers that occur in the applied
+        sample; and
       - latent correlation  rho in {0.37, 0.41}   (the signed and absolute
         mean pairwise correlations of the Model LB residuals, Section 6.3).
 
-    P(zero) = E_F[ Phi( (z - sqrt(rho) F) / sqrt(1-rho) )^8 ],  F ~ N(0,1),
-    z = Phi^{-1}(1 - p), evaluated by Gauss-Hermite-free adaptive quadrature.
+    P(zero) = E_F[ prod_i Phi( (z_i - sqrt(rho) F) / sqrt(1-rho) ) ],
+    F ~ N(0,1), z_i = Phi^{-1}(1 - power_i) PER CURRENCY (heterogeneous,
+    not a single power raised to the 8th power), evaluated by adaptive
+    quadrature.
 
     This is an APPROXIMATION, not an estimate: the equicorrelated one-factor
     structure is an assumption standing in for the unknown joint law of the
     eight statistics. It is reported in the paper as such.
 
 OUTPUT
-    dependence_bound.csv (p, rho, prob_zero) + a console table. Deterministic
-    (pure quadrature, no simulation, no seeds).
+    dependence_bound.csv (rho, prob_zero, independence) + a console table.
+    Deterministic (pure quadrature, no simulation, no seeds).
 
 REQUIRES
     numpy, scipy.
@@ -37,30 +42,41 @@ import numpy as np
 from scipy.stats import norm
 from scipy.integrate import quad
 
-POWERS = (0.30, 0.325, 0.34)   # feasible power at the tangency (Table 6)
+# per-currency feasible power at the applied AR order (Table pppsurface):
+# p=1 -> 0.30 (AUD, CHF, GBP, JPY, NZD); p=2 -> 0.31 (CAD, NOK, SEK)
+CURRENCY_POWER = {
+    "AUD": 0.30, "CHF": 0.30, "GBP": 0.30, "JPY": 0.30, "NZD": 0.30,
+    "CAD": 0.31, "NOK": 0.31, "SEK": 0.31,
+}
 RHOS = (0.37, 0.41)            # signed / absolute mean pairwise correlation
-N = 8                          # admissible currencies
 
 
-def prob_zero(p: float, rho: float, n: int = N) -> float:
-    """P(zero rejections) under the one-factor equicorrelated Gaussian."""
-    z = norm.ppf(1.0 - p)
-    f = lambda x: norm.pdf(x) * norm.cdf((z - np.sqrt(rho) * x)
-                                         / np.sqrt(1.0 - rho)) ** n
+def prob_zero(powers: dict, rho: float) -> float:
+    """P(zero rejections) under the one-factor equicorrelated Gaussian,
+    with each currency's OWN power (heterogeneous, not a single value^N)."""
+    zs = [norm.ppf(1.0 - p) for p in powers.values()]
+    def f(x):
+        prod = 1.0
+        for z in zs:
+            prod *= norm.cdf((z - np.sqrt(rho) * x) / np.sqrt(1.0 - rho))
+        return norm.pdf(x) * prod
     val, _ = quad(f, -10.0, 10.0)
     return float(val)
 
 
 def main() -> None:
     rows = []
-    print(f"{'power':>7} {'rho':>6} {'P(zero|H1)':>12}   independence")
-    for p in POWERS:
-        indep = (1.0 - p) ** N
-        for rho in RHOS:
-            pz = prob_zero(p, rho)
-            rows.append(dict(power=p, rho=rho, prob_zero=round(pz, 4),
-                             independence=round(indep, 4)))
-            print(f"{p:7.3f} {rho:6.2f} {pz:12.3f}   {indep:.3f}")
+    indep = 1.0
+    for p in CURRENCY_POWER.values():
+        indep *= (1.0 - p)
+    print(f"per-currency power: {CURRENCY_POWER}")
+    print(f"independence P(zero|H1) = prod(1-power_i) = {indep:.4f}")
+    print(f"{'rho':>6} {'P(zero|H1)':>12}   independence")
+    for rho in RHOS:
+        pz = prob_zero(CURRENCY_POWER, rho)
+        rows.append(dict(rho=rho, prob_zero=round(pz, 4),
+                         independence=round(indep, 4)))
+        print(f"{rho:6.2f} {pz:12.4f}   {indep:.4f}")
     with open("dependence_bound.csv", "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(rows[0]))
         w.writeheader()

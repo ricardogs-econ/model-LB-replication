@@ -5,6 +5,36 @@ follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [semantic](https://semver.org/). Version and archival DOIs are recorded in
 `CITATION.cff`.
 
+## [1.1.5] — 2026-07-12
+
+Precision fix to the Section 6.3 dependence discussion, found in an
+independent line-by-line audit of the v1.1.4 narrative rewrite. The feasible
+power at the tangency is not homogeneous across the eight currencies (five
+at `p=1` have power 0.30, three at `p=2` have power 0.31), so `dependence_bound.py`'s
+generic three-point grid `{0.30, 0.325, 0.34}` -- a leftover of the pre-AR-order-fix
+power range -- did not describe the actual applied sample even after v1.1.4
+corrected the AR orders. Rewritten to use the true per-currency power
+(heterogeneous, not `power^8`): independence `P(zero|H1)` moves from 0.046
+to the exact 0.0552, and the dependence-adjusted figure from the stale
+0.18-0.24 to 0.21-0.23.
+
+### Added
+- `dependence_count_pmf.py`: the full probability mass function of the
+  rejection count (not just `P(zero)`) under the same heterogeneous
+  one-factor model, by exact enumeration of the `2^8` rejection patterns
+  plus quadrature over the common factor. Backs a stronger manuscript claim:
+  under the estimated dependence, zero rejections is the *modal* outcome
+  (`P(0)=0.215`-`0.234 > P(1)=0.192`-`0.198 > ...`, monotone decreasing),
+  whereas under independence the mode is two. Deterministic; selftest
+  checks the pmf sums to one, recovers the independence (Poisson-binomial)
+  limit as `rho -> 0`, and matches the closed-form product at `k=0`.
+
+### Fixed
+- `dependence_bound.py`: `POWERS` grid replaced by `CURRENCY_POWER`, the
+  actual per-currency feasible power from Table pppsurface at each
+  currency's own AR order; `prob_zero` now uses each currency's own `z_i`
+  instead of a single value raised to the 8th power.
+
 ## [1.1.4] — 2026-07-12
 
 Correctness fix, headline result affected: `ppp_ar_diagnostic.csv`'s AR-order

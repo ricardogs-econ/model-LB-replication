@@ -20,7 +20,8 @@ same way.
   `--T` default `55` -> `52`; `empirical_block()`'s `start_year` keyword
   default `1970` -> `1973`. Verified: `--quick` now reports `[window]
   start_year=1973 -> calibration T=52` without needing `--start-year`
-  passed explicitly.
+  passed explicitly. Archived on Zenodo (version DOI
+  `10.5281/zenodo.21328011`).
 
 ## [1.1.7] — 2026-07-12
 
@@ -32,7 +33,8 @@ in `pesaran_cd.py` (v1.1.2) and `ppp_ar_diagnostic.csv`'s AR-order selection
 (v1.1.4), just in a third module. Also archives the full `cbar_surface.csv`
 production surface (previously only a 3-cell placeholder shipped, despite
 the Data statement's promise that "every simulation output cited in the
-text" is included).
+text" is included). Archived on Zenodo (version DOI
+`10.5281/zenodo.21327947`).
 
 ### Fixed
 - `hl_median_unbiased.py`: `--start-year` default `1970` -> `1973` (the

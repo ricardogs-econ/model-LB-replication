@@ -3,6 +3,7 @@ __pycache__/
 *.nbc
 *.nbi
 hl_results.csv
+hl_results_wild.csv
 boot_out/
 robustness_out/
 section5_out/

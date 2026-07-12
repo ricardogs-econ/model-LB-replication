@@ -164,8 +164,11 @@ def fig_hl_forest(hl, hlw, out_path, xmax=80.0):
                 ax.plot([pt], [yy], marker="o", ms=4, color=col)
         # flag the collapse cases (unbounded under MP -> bounded under LB)
         if collapse:
-            ax.annotate("collapse", xy=(xmax * 1.30, y), fontsize=7,
-                        style="italic", color="black", va="center")
+            ax.annotate("collapse", xy=(xmax * 1.30, y),
+                        xytext=(-11.34, 0), textcoords="offset points",
+                        fontsize=7, style="italic", color="black",
+                        va="center")  # 0.4 cm (11.34 pt) inset so the label
+                        # stays inside the axes regardless of the log scale
         yticks.append(y)
         ylabels.append(cur + (r"$^{\ast}$" if collapse else ""))
     ax.set_yticks(yticks)

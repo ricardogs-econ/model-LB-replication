@@ -5,6 +5,17 @@ follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [semantic](https://semver.org/). Version and archival DOIs are recorded in
 `CITATION.cff`.
 
+## [1.1.6] — 2026-07-12
+
+Cosmetic fix to `figs_ppp.py`: the "collapse" annotation on `fig_hl_forest.pdf`
+was placed flush with the axes edge and could clip depending on renderer/font
+metrics. Given an explicit 0.4 cm (11.34 pt) inset via `xytext`/`textcoords`
+so it stays inside the axes regardless of the log-scale x-range. No data or
+numerical output changes. `.gitignore` also gained `hl_results_wild.csv`
+(the wild-bootstrap companion to `hl_results.csv`, both generated outputs
+that were already meant to be excluded per the README but only one was
+actually listed).
+
 ## [1.1.5] — 2026-07-12
 
 Precision fix to the Section 6.3 dependence discussion, found in an

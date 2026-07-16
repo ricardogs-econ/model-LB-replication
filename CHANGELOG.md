@@ -16,7 +16,8 @@ gives 0.050/0.050/0.521 for the calibrated row; the values previously pasted
 into the manuscript (0.049/0.054/0.534) were traced to the `--selftest`
 reference tuple in `robustness.py` (a gate-logic check, not a production run)
 and are superseded. Seeds and the c-bar path are unchanged (lambda-exact
--8.40); no numerical routine was touched.
+-8.40); no numerical routine was touched. Archived on Zenodo (version DOI
+`10.5281/zenodo.21398025`).
 
 ### Fixed
 - `size_power_cbar_comparison.py`: (i) remaining "Model 1"/"MODEL 1"

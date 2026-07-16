@@ -21,15 +21,17 @@ WHAT IT PRODUCES  (subcommands)
               calibrated Model LB tangency, the linear break-count value, and
               the reused trend-break surface -- all correctly sized, differing
               only in power (the shortcuts over-detrend and lose power).
-              -> Table `power`, Figure `power`.  The trend-break comparison
-              curve uses the CKP response surface c_bar_rs, INLINED in
-              size_power_cbar_comparison.py so this package has no external dependency.
+              -> Table `power` (tab_power.tex) and the Figure `power` data
+              (power_comparison.csv; render with generate_figures.py --only fig3).
+              The trend-break comparison curve uses the CKP response surface
+              c_bar_rs, INLINED in size_power_cbar_comparison.py, so this package
+              has no external dependency.
     all       Run ar1, oracle, trimming, power in sequence.
 
 USAGE
     python replicate_section5.py all --outdir section5_out          # paper run
     python replicate_section5.py ar1 --recalibrate
-    python replicate_section5.py power                              # Table/Fig power
+    python replicate_section5.py power                              # tab_power.tex + power_comparison.csv
     python replicate_section5.py --selftest        # pure-logic gates (no numba)
     python replicate_section5.py <sub> --quick     # fast smoke test
 

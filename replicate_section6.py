@@ -3,7 +3,7 @@
 ================================================================================
 replicate_section6.py -- Replicates Section 6 of the paper: the empirical PPP
     application (admissibility sweep, AR(p) bootstrap calibration, half-lives,
-    and the two figures), as a single ordered entry point.
+    and the half-life decomposition), as a single ordered entry point.
 ================================================================================
 
 WHAT IT PRODUCES  (stages, run in order unless one is selected)
@@ -16,9 +16,9 @@ WHAT IT PRODUCES  (stages, run in order unless one is selected)
     hl      Median-unbiased (Andrews-Chen) half-lives with grid-t and wild
             bootstrap intervals, and the level-break vs constant-mean
             decomposition.  -> hl_results.csv
-    figures The two Section-6 figures: the eight real exchange rates with the
-            H1 step, and the half-life forest plot.
-            -> fig_rer_series.pdf, fig_hl_forest.pdf
+    Figures are NOT produced here: all plotting lives in generate_figures.py,
+    which reads hl_results.csv / hl_results_wild.csv (Fig 5) and
+    ppp_panel.csv / exog_dates.csv (Fig 4). Run it after this module.
 
 DATA (public; see "Data sources" in the README and each script header)
     ppp_panel.csv -- the eight admissible real exchange rates q_it, 1973-2024,
@@ -31,8 +31,8 @@ USAGE
     python replicate_section6.py all                       # full application
     python replicate_section6.py sweep --fetch             # rebuild from source
     python replicate_section6.py hl
-    python replicate_section6.py figures
     python replicate_section6.py <stage> --quick           # fast smoke test
+    # figures afterward:  python generate_figures.py --only fig4 --only fig5
 
 INPUT DEPENDENCY
     The boot stage reads the calibration surface produced by
@@ -41,8 +41,9 @@ INPUT DEPENDENCY
 
 REQUIRES
     mlb_core.py, ppp_sweep_bis.py, boot_ppp_cbar.py,
-    hl_median_unbiased.py, figs_ppp.py in the same directory;
-    numpy, scipy (sweep), numba, matplotlib (figures).
+    hl_median_unbiased.py in the same directory;
+    numpy, scipy (sweep), numba. No matplotlib (figures live in
+    generate_figures.py).
 ================================================================================
 """
 import argparse
@@ -60,7 +61,7 @@ def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("stage",
-                    choices=["sweep", "boot", "hl", "figures", "all"],
+                    choices=["sweep", "boot", "hl", "all"],
                     nargs="?", default="all")
     args, rest = ap.parse_known_args()
 
@@ -84,21 +85,14 @@ def main():
                                   "--dates", "exog_dates.csv", "--out", "hl_results.csv"]
         _run("hl_median_unbiased", argv)
 
-    def do_fig():
-        print("\n===== Section 6: figures =====")
-        argv = rest if rest else ["--data-dir", ".", "--out-dir", "."]
-        _run("figs_ppp", argv)
-
     if args.stage == "sweep":
         do_sweep()
     elif args.stage == "boot":
         do_boot()
     elif args.stage == "hl":
         do_hl()
-    elif args.stage == "figures":
-        do_fig()
     else:
-        do_sweep(); do_boot(); do_hl(); do_fig()
+        do_sweep(); do_boot(); do_hl()
 
 
 if __name__ == "__main__":

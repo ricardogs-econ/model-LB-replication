@@ -6,7 +6,7 @@ boot_ppp_cbar_production.py
 PPP application (OECD-core/USD, Model LB): production calibration of the
 extended response surface  (cbar*(m,T,p), cv(m,T,p))  under an AR(p)
 nuisance-family
-innovation, plus the preliminary empirical block. Numba throughout.
+innovation, plus the empirical block. Numba throughout.
 
 EQUIVALENCE CONTRACT.  Every Monte Carlo convention is inherited from
 mlb_core.py, the Article-1 production engine:
@@ -48,8 +48,9 @@ Outputs (all numbers needed for tables/figures) under --out:
   calib/power_curves.csv        per (cell, lambda-config, cbar): power, cv5s, SEs
   calib/lambda_configs.csv      the lambda grid actually used
   raw/cell_<m>_<T>_<p>_<meth>.npz   null/alt PT & MZt draws at the tangency
-  empirical/ppp_empirical_prelim.csv  per-currency test block (PRELIMINARY:
-                                placeholder breaks 1973+1985 until Part 2b)
+  empirical/ppp_empirical.csv   per-currency test block at the REAL
+                                exogenous break dates read from exog_dates.csv
+                                (Tables 7-8); asymptotic vs config-faithful CV
   meta.json                     params, seeds, versions, input hashes, timing
 
 Usage (local, Windows):
@@ -377,7 +378,9 @@ def tangency_cell(K, gen_arp, P, T, m, p, sigma2_method, lambdas_list,
                 definition="oracle-PT (ERS envelope); cv & powF are feasible")
 
 # =============================================================================
-# 4. EMPIRICAL BLOCK (PRELIMINARY: placeholder breaks until Part 2b)
+# 4. EMPIRICAL BLOCK -- per-currency test at the exogenous break dates from
+#    exog_dates.csv. PLACEHOLDER_BREAKS is a defensive fallback used ONLY when
+#    exog_dates.csv is absent (it never fires in the shipped package).
 # =============================================================================
 PLACEHOLDER_BREAKS = (1973, 1985)
 
@@ -500,7 +503,7 @@ def empirical_block(K, gen_arp, P, panel_csv, diag_csv, surface_rows, out_dir,
         print(f"  {cur}: MZt(cal)={mzt_cal:.3f} vs cv={cv_mzt_cf:.3f} "
               f"[{'REJ' if mzt_cal < cv_mzt_cf else 'no'}] | "
               f"alpha_MP={alpha_sq:.3f} rho_LB={rho_lb:.3f}")
-    _write_csv(Path(out_dir) / "empirical" / "ppp_empirical_prelim.csv", rows_out)
+    _write_csv(Path(out_dir) / "empirical" / "ppp_empirical.csv", rows_out)
     return rows_out
 
 # =============================================================================

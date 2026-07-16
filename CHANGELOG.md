@@ -5,6 +5,76 @@ follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [semantic](https://semver.org/). Version and archival DOIs are recorded in
 `CITATION.cff`.
 
+## [1.1.9] — 2026-07-15
+
+Label-integrity pass on the Table 3 / Figure 3 generator, plus a provenance
+correction for the manuscript's Table 3 values. Two sites in
+`size_power_cbar_comparison.py` survived the v1.1.5 "Model 1" -> "Model LB"
+rename because they did not match the original search patterns. With the code
+patched, the canonical production run (`SEED_BASE=20260701`, R=10000, MZt CV5)
+gives 0.050/0.050/0.521 for the calibrated row; the values previously pasted
+into the manuscript (0.049/0.054/0.534) were traced to the `--selftest`
+reference tuple in `robustness.py` (a gate-logic check, not a production run)
+and are superseded. Seeds and the c-bar path are unchanged (lambda-exact
+-8.40); no numerical routine was touched.
+
+### Fixed
+- `size_power_cbar_comparison.py`: (i) remaining "Model 1"/"MODEL 1"
+  doc-string, comment, and dict-key sites renamed to "Model LB"; (ii) the
+  LaTeX label VALUE printed into `tab_power.tex` still read
+  `Calibrated Model~1` (the non-breaking tilde escaped the earlier
+  space-separated replace) -> `Calibrated Model~LB`; (iii) a dangling math
+  delimiter left by an earlier overlapping replace (`nominal size .05$`) ->
+  `nominal size $0.05$`.
+- `robustness.py`: the CLI help text and the EXPERIMENT 4 header referenced
+  `figuras_v6.py`, which does not exist in the package; rewritten to state
+  that `power_comparison.csv` is a standalone data artifact (no other module
+  consumes it) and that the canonical tab:power / fig:power generator is the
+  self-contained `size_power_cbar_comparison.py`.
+- `mlb_core.py`: last stale diagnostic comment surviving the v1.1.7 anchor
+  re-adjudication (`the "~0.3"`) -> `the "~0.24"`.
+- `boot_ppp_cbar.py`: corrected a stale docstring calling the empirical block
+  "PRELIMINARY (placeholder breaks 1973+1985)"; it reads the real per-currency
+  dates from `exog_dates.csv` (the placeholder is a fallback that never fires
+  in the shipped package). Renamed the output
+  `empirical/ppp_empirical_prelim.csv` -> `empirical/ppp_empirical.csv`
+  (it backs Tables 7-8; the "prelim" name was misleading).
+
+### Added
+- Bundled the two artifacts behind the empirical tables:
+  `boot_out/calib/surface_ppp_boot.csv` (Table `pppsurface`) and
+  `boot_out/empirical/ppp_empirical.csv` (Table `ppp`), so every table in the
+  paper traces to a shipped simulation output.
+- `reconcile_tables.py` and `reconcile_boot.py`: package self-checks that
+  reconcile the manuscript's table literals against the artifacts.
+
+### Removed
+- `cbar_applied_T52.csv`: a superseded 3-cell placeholder (marked
+  "Distributed: no") that no code referenced; dropped from the package.
+
+### Changed
+- Figure `cbar` (`cbar_surface`): the six break-count curves were drawn on
+  matplotlib's default colour cycle. Switched both generators
+  (`replicate_section3_4.make_figure`, `mlb_core.make_surface_figure`) to a
+  greyscale, colour-blind-safe scheme (m distinguished by marker + line style +
+  grey level), matching the strictly-greyscale Section 5-6 figures. Verified
+  0 coloured pixels by rasterisation. The other four figures were already
+  greyscale.
+
+### Refactored
+- All figure generation is centralized in a new single entry point,
+  `generate_figures.py` (reads the CSV artifacts, renders the five figures in
+  grayscale, imports only numpy + matplotlib). Plotting was removed from the
+  compute modules: `mlb_core.py` (dropped `make_surface_figure`),
+  `replicate_section3_4.py` (dropped the figure; added `--limiting-density`,
+  which writes `limiting_density.csv` for Figure 1), and
+  `size_power_cbar_comparison.py` (now compute-only; writes `power_comparison.csv`
+  for Figure 3). `figs_ppp.py` was removed (its plots moved into
+  `generate_figures.py`). This enforces a clean compute/figure boundary and lets
+  a referee regenerate all figures from the shipped data without any simulation.
+- Figure 5 (`fig_hl_forest`): the legend is now an opaque, on-top box so the
+  bottom currency's (SEK) light-grey line no longer bleeds through it.
+
 ## [1.1.8] — 2026-07-12
 
 Same reproducibility fix as v1.1.7, in the module it was found alongside

@@ -22,8 +22,9 @@ term while its t-stat is insignificant at 5% (|t|<1.96), stop at the first
 significant one or at k=1.
 
 Usage:
-    python select_ar_order.py --panel ppp_panel.csv --dates exog_dates.csv \
-        --start 1973 --kmax 10 --out ppp_ar_diagnostic_1973.csv
+    python select_ar_order.py --start 1973 --kmax 10
+        # writes ppp_ar_diagnostic.csv (the file hl_median_unbiased.py and
+        #  boot_ppp_cbar.py read); pass --out to write elsewhere.
 """
 from __future__ import annotations
 import argparse, csv, sys
@@ -142,7 +143,7 @@ def main(argv=None):
     ap.add_argument("--dates", default="exog_dates.csv")
     ap.add_argument("--start", type=int, default=1973)
     ap.add_argument("--kmax", type=int, default=10)
-    ap.add_argument("--out", default="ppp_ar_diagnostic_1973.csv")
+    ap.add_argument("--out", default="ppp_ar_diagnostic.csv")
     args = ap.parse_args(argv)
 
     panel = load_panel(args.panel, args.start)
@@ -182,5 +183,3 @@ def main(argv=None):
     print(f"-> {args.out}")
 
 
-if __name__ == "__main__":
-    sys.exit(main())

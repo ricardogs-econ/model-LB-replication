@@ -1,0 +1,6 @@
+m,T,p,method,cbar_star,cbar_star_se,cv5_mzt_at_star,power_feasible_at_star,n_lambda,n_fallback,definition,seconds
+2,52,0,maic,-12.789600612479397,0.1682302329069807,-2.4617849654967543,0.5828180597293146,15,0,oracle-PT (ERS envelope); cv & powF are feasible,260.2
+2,52,0,const,-12.789600612479397,0.1682302329069807,-2.8628759698916997,0.7038478942635795,15,0,oracle-PT (ERS envelope); cv & powF are feasible,124.8
+2,52,1,maic,-9.84531384071036,0.12434712596012534,-2.1084117810822653,0.3031218411323628,15,0,oracle-PT (ERS envelope); cv & powF are feasible,344.1
+2,52,2,maic,-10.371330296371804,0.170990300655804,-2.152859739715955,0.30991920774239134,15,0,oracle-PT (ERS envelope); cv & powF are feasible,341.2
+2,52,4,maic,-12.77371910213169,0.26962562819203273,-2.2596968238479533,0.3369687020658627,15,0,oracle-PT (ERS envelope); cv & powF are feasible,358.7

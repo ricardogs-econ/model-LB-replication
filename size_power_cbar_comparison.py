@@ -1,14 +1,15 @@
 """
 size_power_cbar_comparison.py
 =============================
-Size and power comparison of three c-bar specifications for the Model 1
+Size and power comparison of three c-bar specifications for the Model LB
 (constant + level dummies) point-optimal unit-root test. Produces the power
-table and power-curve figure of the paper's robustness section.
+table of the paper's robustness section and the power-curve data
+behind Figure 3 (fig_power).
 
-Compares THREE c-bar specifications for the MZt test of MODEL 1 (constant + 2
+Compares THREE c-bar specifications for the MZt test of MODEL LB (constant + 2
 level dummies DU), at T=60, m=2, alpha=0.05:
 
-    1. "Calibrated Model 1"  -- the calibrated surface of this paper (const).
+    1. "Calibrated Model LB"  -- the calibrated surface of this paper (const).
     2. "Linear break-count"  -- ad hoc linear scaling of the ERS constant by the
                                 break count (-7,-13,-17,-20 for m=0,1,2,3).
     3. "Trend-break surface" -- the CKP response surface (Model 3, broken trend),
@@ -16,7 +17,7 @@ level dummies DU), at T=60, m=2, alpha=0.05:
                                 response surface c_bar_rs, INLINED below (no
                                 external dependency).
 
-All three use the SAME test (Model 1 detrending with the DU at the known dates
+All three use the SAME test (Model LB detrending with the DU at the known dates
 and the MZt statistic) -- only the VALUE of c-bar changes. Each c-bar gets its
 own critical value (5% percentile of the null c=0), as a practitioner using
 that c-bar would.
@@ -30,22 +31,23 @@ DGPs (table columns):
 The numerical engine is IMPORTED from mlb_core.py, so the validation uses
 exactly the same primitives (build_z, GLS detrending, MZt) as the calibration.
 
-OUTPUTS:
+OUTPUTS (this module is compute-only; it draws no figures):
     - prints the power table (rejection rates +/- Monte Carlo error)
     - writes tab_power.tex (the table body)
-    - generates fig_power.pdf / .png (power curves)
+    - writes power_comparison.csv (the power curves; generate_figures.py reads
+      it to render fig_power.pdf)
 
 USAGE:
     python size_power_cbar_comparison.py            # production
     python size_power_cbar_comparison.py --speed    # fast test (small R)
 """
 from __future__ import annotations
-import os, sys, argparse, warnings
+import os, sys, csv, argparse, warnings
 import numpy as np
 
 warnings.filterwarnings("ignore")
 
-# Model 1 engine (same primitives as the calibration) ----------------------
+# Model LB engine (same primitives as the calibration) ----------------------
 # --- kernel adapter ------------------------------------------------------
 # The calibration kernel is mlb_core, whose public primitives are numba
 # functions. We build thin local wrappers around them so this script shares
@@ -183,7 +185,7 @@ SPD = dict(R_cv=300,  R_table=300,  R_curve=150,  R_calib_cv=300,  R_calib_pow=3
 # =============================================================================
 def stat_sample(cbar, c, n, seed, stat='mzt', beta=BETA, lambdas=LAM):
     """n draws of statistic `stat` under local parameter c, with the 2 breaks of
-    level (magnitude beta), tested in Model 1 at the BREAK_POS com o c̄ dado."""
+    level (magnitude beta), tested in Model LB at the BREAK_POS com o c̄ dado."""
     out = np.empty(n)
     for i in range(n):
         y, _ = generate_dgp(T, lambdas, c, seed + i, beta_scale=beta)
@@ -247,7 +249,7 @@ def main():
     print(f"R: {R}")
     print("=" * 74)
 
-    # ---- calibrated c-bar (Model 1) ---------------------------------------
+    # ---- calibrated c-bar (Model LB) ---------------------------------------
     if args.recalib:
         cbar_calib = calibrate_cbar(R['R_calib_cv'], R['R_calib_pow'])
         print(f"[calibrated c-bar] recomputed via PT tangency: {cbar_calib}  (paper literal: -8.40)")
@@ -258,7 +260,7 @@ def main():
 
     cbar_tb = round(c_bar_rs(BREAK_POS, T), 2)
     CBAR = {
-        "Calibrated Model 1":  float(cbar_calib),
+        "Calibrated Model LB":  float(cbar_calib),
         "Linear break-count":  -17.0,
         "Trend-break surface": float(cbar_tb),
     }
@@ -302,7 +304,7 @@ def main():
     # ---- LaTeX (table body) ------------------------------------------------
     def cell(t): return f"${t[0]:.3f}$ \\tiny$(\\pm{t[1]:.3f})$"
     rows = []
-    label = {"Calibrated Model 1": "Calibrated Model~1 $\\bar c(m,T)$",
+    label = {"Calibrated Model LB": "Calibrated Model~LB $\\bar c(m,T)$",
              "Linear break-count": "Linear break-count scaling",
              "Trend-break surface": "Trend-break surface"}
     for name in CBAR:
@@ -316,57 +318,22 @@ def main():
            "\n".join(rows) + "\n")
     with open(os.path.join(args.outdir, "tab_power.tex"), "w", encoding="utf-8") as f:
         f.write(tex)
-    print("\n[escrito] tab_power.tex")
+    print("[written] tab_power.tex")
 
-    # ---- power curve figure -------------------------------------------------
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-        from matplotlib import rcParams
-        rcParams.update({"font.family": "serif", "mathtext.fontset": "dejavuserif",
-                         "axes.spines.top": False, "axes.spines.right": False,
-                         "font.size": 10, "legend.fontsize": 9})
-        # Monochrome palette for Q1 print consistency with the Section-6 figures
-        # (which are strictly greyscale). Curves are distinguished on three axes
-        # orthogonal to hue -- marker shape, line style, and marker fill -- so the
-        # figure stays legible in black-and-white and for colour-blind readers.
-        # The paper's own proposal (Calibrated Model 1) carries maximal contrast
-        # (solid black, filled marker); the two dominated shortcuts are grey with
-        # open markers, visually subordinate.
-        cols = {"Calibrated Model 1": "black", "Linear break-count": "0.35",
-                "Trend-break surface": "0.55"}
-        mks  = {"Calibrated Model 1": "o", "Linear break-count": "s",
-                "Trend-break surface": "^"}
-        lss  = {"Calibrated Model 1": "-", "Linear break-count": "--",
-                "Trend-break surface": ":"}
-        mfc  = {"Calibrated Model 1": "black", "Linear break-count": "white",
-                "Trend-break surface": "white"}
-        fig, ax = plt.subplots(figsize=(6.2, 4.0))
-        xs = [abs(c) for c in C_GRID]                  # plot vs |c| (0 → 30)
+    # ---- persist the power-curve data (generate_figures.py draws Figure 3) --
+    # This module is compute-only: it writes the curve to power_comparison.csv;
+    # generate_figures.py reads that CSV and renders fig_power.pdf. alpha and
+    # c_alt (the column-(iii) alternative) are stored so the figure's annotation
+    # lines are reproducible without hard-coded constants.
+    curve_csv = os.path.join(args.outdir, "power_comparison.csv")
+    with open(curve_csv, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["spec", "cbar", "cv5", "alpha", "c_alt", "c", "power"])
         for name in CBAR:
-            ys = [curve[name][c] for c in C_GRID]
-            ax.plot(xs, ys, marker=mks[name], color=cols[name], ls=lss[name],
-                    ms=4.5, lw=1.4, markerfacecolor=mfc[name],
-                    markeredgecolor=cols[name],
-                    label=f"{name} ($\\bar c={CBAR[name]:+.1f}$)")
-        ax.axhline(ALPHA, ls=":", color="0.5", lw=1)
-        ax.text(0.3, ALPHA + 0.012, r"nominal $\alpha=0.05$", fontsize=8, color="0.4")
-        ax.axvline(abs(C_ALT), ls="--", color="0.7", lw=0.9)
-        ax.text(abs(C_ALT) + 0.3, 0.95, f"col.~(iii)\n$c={C_ALT:.0f}$", fontsize=7.5,
-                color="0.5", va="top")
-        ax.set_xlabel(r"local alternative $|c|$  (root $=1-|c|/T$)")
-        ax.set_ylabel(r"rejection rate (power)")
-        ax.set_title(f"Power of $\\mathrm{{MZ}}_t$ under three $\\bar c$ choices, $T={T}$, $m=2$",
-                     fontsize=10)
-        ax.set_ylim(0, 1.02); ax.set_xlim(-0.5, 30.5)
-        ax.legend(frameon=False, loc="lower right")
-        fig.tight_layout()
-        fig.savefig(os.path.join(args.outdir, "fig_power.pdf"), bbox_inches="tight")
-        fig.savefig(os.path.join(args.outdir, "fig_power.png"), dpi=160, bbox_inches="tight")
-        print("[escrito] fig_power.pdf / fig_power.png")
-    except Exception as e:
-        print(f"[warning] figure not generated: {e}")
+            for c in C_GRID:
+                w.writerow([name, f"{CBAR[name]:.4f}", f"{CV[name]:.4f}",
+                            ALPHA, C_ALT, f"{c:.1f}", f"{curve[name][c]:.5f}"])
+    print(f"[written] {curve_csv}")
 
     print("\nDone.")
 

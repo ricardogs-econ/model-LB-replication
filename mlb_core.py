@@ -1047,7 +1047,7 @@ def surface_diagnostics(P, df, sigma2_method='const'):
     ss_tot = np.sum((y - y.mean()) ** 2)
     r2_mT = 1 - np.sum((y - pred_mT) ** 2) / ss_tot if ss_tot > 0 else np.nan
 
-    # within-cell lambda spread (the "~0.3")
+    # within-cell lambda spread (the "~0.24")
     grp = d.groupby(['m', 'T'])['cbar_otimo']
     within = grp.transform(lambda v: v - v.mean())
     lam_spread = float(np.mean(np.abs(within[d.m >= 1]))) if (d.m >= 1).any() else np.nan
@@ -1083,53 +1083,6 @@ def surface_diagnostics(P, df, sigma2_method='const'):
     print(f"  m=5 distinct break configs    = {diag['m5_distinct_configs']}   "
           f"(61-term CKP form is rank-deficient)")
     return diag
-
-
-def make_surface_figure(P, df, intercepts, sigma2_method='const'):
-    """Figure 1 (cbar_surface.pdf): (a) c-bar vs T by m; (b) c-bar vs 1/T with
-    the per-m intercept fits sharing ~ -7."""
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-    except Exception as e:
-        print(f"[figure] matplotlib unavailable ({e}); skipping cbar_surface.pdf.")
-        return
-    d = df[df.sigma2_method == sigma2_method]
-    piv = d.groupby(['m', 'T'])['cbar_otimo'].mean().reset_index()
-    ms = sorted(piv.m.unique())
-
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.4))
-    for m in ms:
-        dm = piv[piv.m == m].sort_values('T')
-        ax1.plot(dm['T'], dm['cbar_otimo'], marker='o', label=f"m={m}")
-    ax1.axhline(-7.0, ls='--', color='k', lw=0.8, alpha=0.7)
-    ax1.set_xlabel("T"); ax1.set_ylabel(r"$\bar c(m,T)$")
-    ax1.set_title("(a) optimal $\\bar c$ versus $T$")
-    ax1.legend(fontsize=8, ncol=2)
-
-    for m in ms:
-        dm = piv[piv.m == m].sort_values('T')
-        invT = 1.0 / dm['T'].values
-        ax2.scatter(invT, dm['cbar_otimo'].values, s=18)
-        row = intercepts[intercepts.m == m]
-        if len(row) and np.isfinite(row['c_inf'].values[0]):
-            c_inf = row['c_inf'].values[0]; a = row['a'].values[0]
-            xx = np.linspace(0, invT.max() * 1.05, 50)
-            ax2.plot(xx, c_inf + a * xx, lw=1.0)
-    ax2.axhline(-7.0, ls='--', color='k', lw=0.8, alpha=0.7)
-    ax2.set_xlabel("1/T"); ax2.set_ylabel(r"$\bar c$")
-    ax2.set_title("(b) $\\bar c$ versus $1/T$ with per-$m$ fits")
-
-    fig.tight_layout()
-    # Same per-method naming as make_latex_tables (guard: this function is
-    # currently only called for 'const', via the gate in post_process, but the
-    # suffix prevents silent overwrite should that change).
-    suffix = "" if sigma2_method == 'const' else f"_{sigma2_method}"
-    out = os.path.join(P['checkpoint_dir'], f"cbar_surface{suffix}.pdf")
-    fig.savefig(out, bbox_inches='tight')
-    plt.close(fig)
-    print(f"[figure] wrote {out}")
 
 
 def make_latex_tables(P, df, intercepts, diag, sigma2_method='const'):
@@ -1192,8 +1145,6 @@ def post_process(P):
         inter = fit_intercepts_1_over_T(df, method)
         diag = surface_diagnostics(P, df, method)
         make_latex_tables(P, df, inter, diag, method)
-        if method == 'const':     # headline figure uses the difference-based sigma^2
-            make_surface_figure(P, df, inter, method)
     return df
 
 

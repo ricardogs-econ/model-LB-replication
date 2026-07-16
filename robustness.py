@@ -32,8 +32,9 @@ Model LB ("Level Breaks and GLS Detrending") paper, each as a subcommand:
             and three DGPs (I(1) no breaks; I(1)+level breaks; I(0) broken mean),
             at T=60, m=2, lambda=(1/3,2/3). Each spec uses its own 5% CV, so all
             are correctly sized and differ only in power; over-detrending by the
-            shortcuts costs power. Writes power_comparison.csv (consumed by
-            figuras_v6.fig_power) and tab_power.tex.
+            shortcuts costs power. Writes power_comparison.csv and tab_power.tex.
+            (The canonical tab:power / fig:power generator is the
+            self-contained size_power_cbar_comparison.py.)
             -> tab:power, fig:power
 
   all       Run ar1, oracle, trimming and power in sequence into --outdir.
@@ -789,11 +790,11 @@ def run_trimming(args, outdir):
 # EXPERIMENT 4 -- POWER COMPARISON OF cbar SPECIFICATIONS  (tab:power, fig:power)
 # ==============================================================================
 # Size and power of MZ_t under three cbar specifications and three DGPs, at
-# T=60, m=2, lambda=(1/3,2/3), alpha=0.05.  Migrated here (its correct home) from
-# figuras_v6.py: this experiment produces DATA (power_comparison.csv), which
-# figuras_v6.fig_power then consumes -- restoring the data/figure boundary a
-# replication package requires.  The original tab:power script was lost; this is
-# the authoritative regeneration on the validated the numba kernel.
+# T=60, m=2, lambda=(1/3,2/3), alpha=0.05.  This experiment writes its DATA to
+# power_comparison.csv; no other module consumes that file.  The canonical,
+# self-contained generator of tab:power / fig:power is
+# size_power_cbar_comparison.py; this experiment is retained as an independent
+# regeneration of the same design on the validated numba kernel.
 #
 # Columns:
 #   (i)   I(1), no breaks (size)          : c=0,      beta=0

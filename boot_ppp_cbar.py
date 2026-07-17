@@ -38,6 +38,13 @@ mlb_core.py, the Article-1 production engine:
     only in the p=0 baseline to anchor against Article-1 tab:cbar.
 AR(p) innovation: partial-autocorrelation (Levinson-Durbin) parameterisation,
 bijective onto the stationary region -- stability by construction.
+PAC1 PROVENANCE (v1.2.0): the first PAC of the nuisance is CLI-exposed
+(--pac1) and defaults to 0.27, the median first-lag ADF coefficient of the
+eight Model-LB residual series at their BIC orders (see pac_diagnostic.py /
+ppp_pac_diagnostic.csv; empirical range -0.01..0.39, mean 0.23). The
+pre-1.2.0 value 0.4 was a legacy of an earlier 4-lag diagnostic and exceeds
+the entire empirical range; it remains available as a sensitivity run
+(--pac1 0.4 --out boot_pac04).
 
 FALLBACK CHAIN (strict): the numba kernel -> mlb_kernel.py (exact, pure Python,
 ~45x slower, loud WARN) -> ABORT. Production never runs on an approximation.
@@ -179,15 +186,48 @@ def pac_to_phi(pac: np.ndarray) -> np.ndarray:
         phi = new
     return phi
 
-def draw_phi(p: int, rng: np.random.Generator, pac1: float = 0.4,
+def draw_phi(p: int, rng: np.random.Generator, pac1: float = 0.27,
              pac_hw: float = 0.3) -> np.ndarray:
-    """Nuisance AR(p): first PAC fixed at pac1 (persistence level), higher PACs
-    uniform in [-pac_hw, pac_hw]. Matches the session diagnostic design."""
+    """Nuisance AR(p) FAMILY: first PAC fixed at pac1 (the persistence level;
+    default 0.27, provenance in pac_diagnostic.py), higher PACs uniform in
+    [-pac_hw, pac_hw]. Used for the surface calibration; the empirical
+    config-faithful cv uses the currency's own estimated phi instead
+    (estimate_phi_adf, sieve-own design)."""
     if p == 0:
         return np.zeros(0)
     pac = rng.uniform(-pac_hw, pac_hw, size=p)
     pac[0] = pac1
     return pac_to_phi(pac)
+
+def estimate_phi_adf(u: np.ndarray, k: int) -> np.ndarray:
+    """Sieve estimate of the AR(k) nuisance of a single series (design B,
+    v1.2.0): phi_hat = (gamma_1..gamma_k) from the ADF regression
+        Delta u_t = b0 + b*u_{t-1} + sum_j gamma_j Delta u_{t-j} + e_t
+    at the BIC order k. Conditioning on u_{t-1} frees the short-run
+    coefficients from the over-differencing MA that depresses the PACF of
+    Delta u when the series is stationary; this is the same regression the
+    order selection fit, and the per-panel median of gamma_1 is the
+    provenance of the common pac1=0.27 (ppp_pac_diagnostic.csv).
+    Stationarity is enforced strictly (companion-matrix roots)."""
+    if k == 0:
+        return np.zeros(0)
+    du = np.diff(u)
+    yv = du[k:]
+    X = [np.ones(len(yv)), u[k:-1]]
+    for j in range(1, k + 1):
+        X.append(du[k - j:-j])
+    b, *_ = np.linalg.lstsq(np.column_stack(X), yv, rcond=None)
+    phi = np.asarray(b[2:2 + k], float)
+    if k == 1:
+        ok = abs(phi[0]) < 1.0
+    else:
+        comp = np.zeros((k, k)); comp[0, :] = phi
+        comp[1:, :-1] = np.eye(k - 1)
+        ok = float(np.max(np.abs(np.linalg.eigvals(comp)))) < 1.0
+    if not ok:
+        raise SystemExit(f"[sieve] estimated AR({k}) nuisance non-stationary "
+                         f"(phi={phi}); refusing to simulate the null.")
+    return phi
 
 def make_gen_arp(njit):
     @njit(cache=True)
@@ -252,7 +292,7 @@ def _pt_oracle(K, y, Z, cbar, omega2):
 
 
 def stats_under(K, gen_arp, T, break_pos, c, cbar, mc, n_reps, seed0, kmax,
-                p, pac1, burn):
+                p, pac1, burn, pac_hw=0.3, phi_fixed=None):
     """n_reps draws at alternative c, stats at detrending cbar; AR(p) innovation.
     RNG in the orchestrator: per-rep seed = seed0 + r.
     Returns (pt_feasible, mzt_feasible, pt_oracle): the feasible statistics use
@@ -263,8 +303,11 @@ def stats_under(K, gen_arp, T, break_pos, c, cbar, mc, n_reps, seed0, kmax,
     Z = K["build_z"](T, break_pos)
     for r in range(n_reps):
         rng = np.random.default_rng((seed0 + r) % (2**63 - 1))
-        phi = draw_phi(p, rng, pac1=pac1)
-        omega2 = 1.0 if p == 0 else 1.0 / (1.0 - float(phi.sum()))**2
+        if phi_fixed is not None:
+            phi = phi_fixed          # sieve-own design: fixed estimated nuisance
+        else:
+            phi = draw_phi(p, rng, pac1=pac1, pac_hw=pac_hw)
+        omega2 = 1.0 if phi.shape[0] == 0 else 1.0 / (1.0 - float(phi.sum()))**2
         eps = rng.standard_normal(T + burn)
         y = gen_arp(T, burn, c, phi, eps)
         mza, msb, mz, ptv, mpt, ok = K["mstats"](y, Z, cbar, mc, kmax)
@@ -296,7 +339,8 @@ def tangency_cell(K, gen_arp, P, T, m, p, sigma2_method, lambdas_list,
             # null draws: feasible (mc) and oracle PT from the SAME draws
             pt0, mzt0, pto0 = stats_under(K, gen_arp, T, bp, 0.0, cbar, mc,
                                           P["R_cv"], cfg_seed, kmax, p,
-                                          P["pac1"], burn)
+                                          P["pac1"], burn,
+                                          P.get("pac_hw", 0.3))
             fin0 = np.isfinite(pt0) & np.isfinite(pto0)
             if fin0.sum() < P["R_cv"] * 0.5:
                 continue
@@ -307,7 +351,8 @@ def tangency_cell(K, gen_arp, P, T, m, p, sigma2_method, lambdas_list,
             # alternative draws at c = cbar
             pt1, _, pto1 = stats_under(K, gen_arp, T, bp, cbar, cbar, mc,
                                        P["R_pow"], cfg_seed + 10**6, kmax, p,
-                                       P["pac1"], burn)
+                                       P["pac1"], burn,
+                                       P.get("pac_hw", 0.3))
             fin1 = np.isfinite(pt1) & np.isfinite(pto1)
             if fin1.sum() == 0:
                 continue
@@ -400,7 +445,7 @@ def load_exog_dates(search_dirs):
     return None, None
 
 def empirical_block(K, gen_arp, P, panel_csv, diag_csv, surface_rows, out_dir,
-                    exog_dates=None, start_year=1973):
+                    exog_dates=None, start_year=1973, sieve_own=True):
     import csv as _csv
     # load panel
     panel = {}
@@ -455,12 +500,29 @@ def empirical_block(K, gen_arp, P, panel_csv, diag_csv, surface_rows, out_dir,
                 or surf.get(("2", Tk, pk, "maic"))
                 or surf.get(("2", Tk, "1", "maic")))
         cbar_cal = float(srow["cbar_star"]) if srow else -7.0
+        # OLS detrending residual (needed both for the sieve nuisance below
+        # and for the MP-contrast persistence block further down)
+        beta_ols, *_ = np.linalg.lstsq(Z, q, rcond=None)
+        u = q - Z @ beta_ols
+        # nuisance for the config-faithful CV (v1.2.0, design B default):
+        # SIEVE-OWN -- the currency's own estimated AR(p_hat) short-run
+        # dynamics from the ADF regression at the BIC order, fixed across
+        # replications (Procedure-2 register of MC_vs_BOOTSTRAP.md: the
+        # persistence structure is taken from the data, per currency).
+        # With sieve_own=False (--common-nuisance) the pre-v1.2.0 common
+        # nuisance-family (pac1, pac_hw) is used instead, as a sensitivity.
+        phi_hat = (estimate_phi_adf(u, p_hat)
+                   if (sieve_own and p_hat > 0) else None)
         # config-faithful CV at the REAL break positions, AR(p_hat) innovation
-        # Deterministic seed BY CONFIGURATION (v1.1.3b): the critical value
-        # is a property of the configuration (break positions, m, p, T), not
-        # of the currency label, so identical configurations must share the
-        # same simulated null and hence the same cv by construction (CHF and
-        # JPY: m=1, break 1985, p=1; NOK and SEK: m=2, 1985+1992, p=2).
+        # Deterministic seed BY CONFIGURATION (v1.1.3b): the seed is a
+        # property of the configuration (break positions, m, p, T), not of
+        # the currency label. Under the common nuisance-family this makes
+        # identical configurations share the same simulated null and hence
+        # the same cv by construction (CHF and JPY: m=1, break 1985, p=1;
+        # NOK and SEK: m=2, 1985+1992, p=2); under sieve-own (v1.2.0) the
+        # seeds still coincide but the estimated phi differs by currency,
+        # so the cvs differ -- by design, since the nuisance is now part of
+        # the priced configuration.
         # zlib.crc32 replaces the built-in hash(), whose string salting
         # (PYTHONHASHSEED, randomized per process since Python 3.3) silently
         # broke bit-for-bit reproducibility.
@@ -469,7 +531,8 @@ def empirical_block(K, gen_arp, P, panel_csv, diag_csv, surface_rows, out_dir,
                    + 104729 * p_hat) % (2**63 - 1)
         pt0, mzt0, _ = stats_under(K, gen_arp, T, bp, 0.0, cbar_cal,
                                    K["method_code"]["maic"], P["R_cv_emp"], seed_cv,
-                                   kmax, p_hat, P["pac1"], burn)
+                                   kmax, p_hat, P["pac1"], burn,
+                                   P.get("pac_hw", 0.3), phi_fixed=phi_hat)
         cv_mzt_cf = float(np.nanpercentile(mzt0, 5))
         # statistics on the data under three calibrations
         def mzt_at(cb):
@@ -477,11 +540,16 @@ def empirical_block(K, gen_arp, P, panel_csv, diag_csv, surface_rows, out_dir,
             return float(mz) if ok > 0.5 else np.nan
         mzt_asym = mzt_at(-7.0)
         mzt_cal  = mzt_at(cbar_cal)
-        # AR(1) persistence with and without breaks (the MP contrast)
+        # empirical p-value of the observed statistic under the simulated
+        # sieve null: far more precise than the binary verdict at the 5%
+        # quantile (se(p) ~ sqrt(p(1-p)/R) ~ 0.0015 at p=0.05, R=20000,
+        # against ~0.02 MC resolution of the quantile itself)
+        fin_cv = np.isfinite(mzt0)
+        p_cf = float(np.mean(mzt0[fin_cv] <= mzt_cal)) if fin_cv.any() else np.nan
+        # AR(1) persistence with and without breaks (the MP contrast);
+        # u (the LB residual) was computed above for the sieve nuisance
         qd = q - q.mean()
         alpha_sq = float(np.corrcoef(qd[:-1], qd[1:])[0, 1])
-        beta_ols, *_ = np.linalg.lstsq(Z, q, rcond=None)
-        u = q - Z @ beta_ols
         rho_lb = float(np.corrcoef(u[:-1], u[1:])[0, 1])
         hl = lambda a: float(np.log(0.5) / np.log(abs(a))) if 0 < abs(a) < 1 else np.inf
         # break-label reflects the dates ACTUALLY used (exogenous or placeholder),
@@ -490,19 +558,25 @@ def empirical_block(K, gen_arp, P, panel_csv, diag_csv, surface_rows, out_dir,
                             if years[0] < b <= years[-1]]
         break_label = (("EXOG:" if exog_dates is not None else "PRELIM:")
                        + "+".join(map(str, break_years_used)))
+        nuisance_lbl = ("sieve-own:" + ";".join(f"{v:.4f}" for v in phi_hat)
+                        if phi_hat is not None
+                        else f"common:pac1={P['pac1']}")
         rows_out.append(dict(currency=cur, T=T, m=m, p_hat=p_hat,
             cbar_calibrated=round(cbar_cal, 3),
             MZt_asym=round(mzt_asym, 4), cv_asym=-1.98,
             reject_asym=int(mzt_asym < -1.98),
             MZt_cal=round(mzt_cal, 4), cv_configfaithful=round(cv_mzt_cf, 4),
             reject_cal=int(mzt_cal < cv_mzt_cf),
+            pvalue_cf=round(p_cf, 4),
+            nuisance=nuisance_lbl,
             alpha_MP=round(alpha_sq, 4), rho_LB=round(rho_lb, 4),
             delta=round(alpha_sq - rho_lb, 4),
             HL_MP=round(hl(alpha_sq), 2), HL_LB=round(hl(rho_lb), 2),
             breaks=break_label))
         print(f"  {cur}: MZt(cal)={mzt_cal:.3f} vs cv={cv_mzt_cf:.3f} "
-              f"[{'REJ' if mzt_cal < cv_mzt_cf else 'no'}] | "
-              f"alpha_MP={alpha_sq:.3f} rho_LB={rho_lb:.3f}")
+              f"[{'REJ' if mzt_cal < cv_mzt_cf else 'no'}] p={p_cf:.4f} | "
+              f"alpha_MP={alpha_sq:.3f} rho_LB={rho_lb:.3f} | "
+              f"nuisance {nuisance_lbl}")
     _write_csv(Path(out_dir) / "empirical" / "ppp_empirical.csv", rows_out)
     return rows_out
 
@@ -559,6 +633,35 @@ def main():
                     help="MAIC lag ceiling; 12 = paper convention, "
                          "10 = Schwert at T=52 (sensitivity run)")
     ap.add_argument("--pcells", type=int, nargs="+", default=[0, 1, 2, 4])
+    ap.add_argument("--pac1", type=float, default=0.27,
+                    help="first PAC of the AR(p) nuisance innovation. 0.27 = "
+                         "median first-lag ADF coefficient of the eight "
+                         "Model-LB residual series at their BIC orders "
+                         "(pac_diagnostic.py -> ppp_pac_diagnostic.csv; "
+                         "v1.2.0 canonical). 0.4 = pre-1.2.0 legacy value "
+                         "(sensitivity; requires its own --out).")
+    ap.add_argument("--pac-hw", dest="pac_hw", type=float, default=0.3,
+                    help="half-width of the uniform draw for PACs of order "
+                         ">= 2 (empirical PACF2 range is -0.22..-0.03, "
+                         "covered by the default)")
+    ap.add_argument("--seed-base", dest="seed_base", type=int, default=20240601,
+                    help="Monte Carlo seed base (default 20240601, the "
+                         "canonical stream). Alternative values quantify the "
+                         "MC resolution of the config-faithful cv (seed "
+                         "jitter); use with a dedicated --out.")
+    ap.add_argument("--common-nuisance", action="store_true",
+                    help="empirical block: use the COMMON nuisance-family "
+                         "(pac1, pac-hw) for the config-faithful CV instead "
+                         "of the v1.2.0 default sieve-own (each currency's "
+                         "estimated ADF phi at its BIC order). Sensitivity "
+                         "design; requires its own --out.")
+    ap.add_argument("--bp", type=int, nargs="+", default=None,
+                    help="EXACT break positions (0-based observation index) "
+                         "for --grid: bypasses the lambda grid and calibrates "
+                         "the single empirical configuration. Example: "
+                         "--bp 12 19 = the 1985+1992 breaks in the 1973-2024 "
+                         "window (T=52, lambda spacing 0.135, below the 0.233 "
+                         "minimum of the averaging grid). Overrides --m.")
     args = ap.parse_args()
 
     t_start = time.time()
@@ -601,10 +704,10 @@ def main():
 
     P = dict(
         cbar_grid=list(np.round(np.arange(-20.0, -2.9, 0.5), 2)),
-        target_power=0.50, kmax=args.kmax, seed_base=20240601,
+        target_power=0.50, kmax=args.kmax, seed_base=args.seed_base,
         R_cv=10000, R_pow=5000, R_cv_emp=20000,
         trim=0.15, min_spacing=0.15, n_grid=7,
-        pac1=0.4, burn=100,
+        pac1=args.pac1, pac_hw=args.pac_hw, burn=100,
     )
     if args.hi:
         P["R_cv"] *= 2; P["R_pow"] *= 2
@@ -617,7 +720,21 @@ def main():
         if args.nrep:
             P["R_cv"] = args.nrep; P["R_pow"] = max(1, args.nrep // 2)
         m_, T_, p_ = args.m, args.T, args.p
-        lams = K["make_lambdas"](m_, P["trim"], P["min_spacing"], P["n_grid"])
+        if args.bp:
+            # EXACT empirical configuration: bypass the lambda grid entirely.
+            # lambda = (bp + 0.5)/T makes floor(lambda*T) reproduce bp exactly
+            # regardless of floating-point representation.
+            bp_req = sorted(args.bp)
+            m_ = len(bp_req)
+            lams = [tuple((b + 0.5) / T_ for b in bp_req)]
+            bp_chk = K["break_pos"](T_, np.array(lams[0]))
+            print(f"[grid] EXACT config requested: bp={bp_req} -> "
+                  f"lambdas={[round(l, 4) for l in lams[0]]} "
+                  f"(kernel check: {list(np.asarray(bp_chk))})", flush=True)
+            assert list(np.asarray(bp_chk)) == bp_req, \
+                "bp mapping mismatch: kernel break_pos disagrees with --bp"
+        else:
+            lams = K["make_lambdas"](m_, P["trim"], P["min_spacing"], P["n_grid"])
         n_grid_cbar = len(P["cbar_grid"])
         print(f"[grid] single cell m={m_} T={T_} p={p_} | "
               f"{len(lams)} lambda x {n_grid_cbar} cbar x "
@@ -649,6 +766,14 @@ def main():
         sys.exit("PROTECAO: rodadas com kmax != 12 exigem --out proprio "
                  "(ex.: --out boot_k10) para nao sobrescrever os artefatos "
                  "canonicos kmax=12 do paper.")
+    if abs(args.pac1 - 0.27) > 1e-12 and str(args.out) == DEFAULT_OUT_DIR:
+        sys.exit("PROTECAO: rodadas com pac1 != 0.27 exigem --out proprio "
+                 "(ex.: --out boot_pac04) para nao sobrescrever os artefatos "
+                 "canonicos pac1=0.27 (v1.2.0) do paper.")
+    if args.common_nuisance and str(args.out) == DEFAULT_OUT_DIR:
+        sys.exit("PROTECAO: --common-nuisance e o design de sensibilidade; "
+                 "exige --out proprio (ex.: --out boot_sens_common) para nao "
+                 "sobrescrever o bloco empirico canonico sieve-own (v1.2.0).")
     (out_dir / "calib").mkdir(exist_ok=True)
 
     # cells: (m=2, T=T_emp) x p in pcells; baseline p=0 also under 'const'.
@@ -754,7 +879,8 @@ def main():
                 print(f"  exog_dates.csv NOT found -> using placeholder "
                       f"{PLACEHOLDER_BREAKS} (PRELIMINARY)")
             empirical_block(K, gen_arp, P, panel_csv, diag_csv, surface, out_dir,
-                            exog_dates=exog_dates, start_year=args.start_year)
+                            exog_dates=exog_dates, start_year=args.start_year,
+                            sieve_own=not args.common_nuisance)
         else:
             print("  MISSING inputs: ppp_panel.csv / ppp_ar_diagnostic.csv not found.")
             print("  searched (in order):")

@@ -45,9 +45,11 @@ from scipy.integrate import quad
 # per-currency feasible power at the applied AR order (Table pppsurface):
 # p=1 -> 0.30 (AUD, CHF, GBP, JPY, NZD); p=2 -> 0.31 (CAD, NOK, SEK)
 CURRENCY_POWER = {
-    "AUD": 0.30, "CHF": 0.30, "GBP": 0.30, "JPY": 0.30, "NZD": 0.30,
-    "CAD": 0.31, "NOK": 0.31, "SEK": 0.31,
+    "AUD": 0.48, "CHF": 0.48, "GBP": 0.48, "JPY": 0.48, "NZD": 0.48,
+    "CAD": 0.45, "NOK": 0.45, "SEK": 0.45,
 }
+# v1.2.0: feasible powers at the tangency under the pac1=0.27 nuisance family
+# (Table pppsurface: 0.4822 at p=1, 0.4491 at p=2, rounded to two decimals).
 RHOS = (0.37, 0.41)            # signed / absolute mean pairwise correlation
 
 

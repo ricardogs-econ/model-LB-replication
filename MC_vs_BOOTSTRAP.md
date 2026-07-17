@@ -103,15 +103,27 @@ structure is taken from the data, not assumed. It nests Procedure 1 as the
 special case `p = 0`, which is precisely why the two are easy to conflate — but
 `p > 0` is estimated, and that is the whole point of Section 6.
 
-**What it produces.** `boot_out/surface_ppp_boot.csv`: per `(m,T,p,method)`, the
-calibrated `c-bar*`, its standard error, feasible power, and the 5% critical
-values. This is the calibration the empirical verdicts in Section 6 use.
+**What it produces.** `boot_out/calib/surface_ppp_boot.csv`: per
+`(m,T,p,method)`, the calibrated `c-bar*`, its standard error, feasible power,
+and the 5% critical values. This is the calibration the empirical verdicts in
+Section 6 use.
+
+**Two nuisance treatments, two roles (v1.2.0).** The *surface* is calibrated
+under a coefficient FAMILY: first PAC fixed at 0.27 (the median first-lag ADF
+coefficient of the eight residual series; provenance in
+`ppp_pac_diagnostic.csv`), higher PACs redrawn uniformly per replication —
+robust over a neighborhood, tabulatable. The *empirical critical value* each
+currency confronts is sieve-own: the currency's fitted ADF phi at its BIC
+order, held fixed across replications — the "per currency" estimation this
+note describes is realised literally in the cv. The common-family cvs are
+archived as a sensitivity in `boot_out/sensitivity/`.
 
 **Reads.** the Section 3–4 surface `cbar_surface.csv` (as the `p = 0` anchor and
 lookup fallback).
 
 **Driver / control.** `replicate_section6.py boot`
-(wraps `boot_ppp_cbar.py`); bootstrap replications `B = 9999`.
+(wraps `boot_ppp_cbar.py`); replications `R_cv = 10,000` / `R_pow = 5,000`
+(surface) and `R_cv_emp = 20,000` (empirical critical values and p-values).
 
 **Runs.** `python replicate_section6.py boot`
 

@@ -82,7 +82,7 @@ python run_model_lb.py --csv myseries.csv --col rer --date-col year \
 |---|---|
 | `robustness.py` | §5 experiments: LRV-estimator choice, AR(1) size/power, recalibration, trimming, cross-validation. |
 | `size_power_cbar_comparison.py` | §5 power table (`tab_power.tex`) + the Figure-3 curve data (`power_comparison.csv`). |
-| `boot_ppp_cbar.py` | §6 AR(p) nuisance-family calibration + the per-currency empirical block (Tables 7–8). |
+| `boot_ppp_cbar.py` | §6 applied calibration + per-currency empirical block (Tables 7–8). Surface under the AR(p) coefficient **family** (`--pac1`, default 0.27 — provenance: `pac_diagnostic.py`); empirical critical values **sieve-own** (each currency's fitted ADF φ̂ at its BIC order) with empirical p-values; `--common-nuisance` reproduces the family design, `--bp` calibrates an exact break configuration, `--seed-base` quantifies the MC resolution of the cv. |
 | `hl_median_unbiased.py` | §6 median-unbiased (Andrews–Chen) half-lives with grid-t / wild bootstrap CIs (Table 9). |
 | `ppp_sweep_bis.py` | Exhaustive BIS-universe admissibility sweep (the funnel / gate table). |
 
@@ -98,6 +98,7 @@ python run_model_lb.py --csv myseries.csv --col rer --date-col year \
 |---|---|
 | `run_model_lb.py` | 🧪 Stand-alone: apply Model LB to any series (see Quick start). |
 | `select_ar_order.py` | Regenerates `ppp_ar_diagnostic.csv` (BIC + general-to-specific AR order, 1973 window). |
+| `pac_diagnostic.py` | Provenance of the nuisance persistence: per-currency PACF of Δ(LB residual) and first-lag ADF coefficients → `ppp_pac_diagnostic.csv` (the median, 0.27, is the canonical `--pac1`). |
 | `pesaran_cd.py` | Pesaran (2004, 2015) cross-sectional-dependence test on the eight residual series (§6 footnote). |
 | `dependence_bound.py` | §6.3 dependence-adjusted probability of zero rejections (one-factor Gaussian). |
 | `dependence_count_pmf.py` | §6.3 full rejection-count PMF by exact enumeration. |
@@ -118,8 +119,10 @@ python run_model_lb.py --csv myseries.csv --col rer --date-col year \
 | `exog_dates.csv` | input — exogenous currency-regime break dates + sources | ✅ |
 | `ppp_ar_diagnostic.csv` | derived — AR(p) order per currency | ✅ |
 | `cbar_surface.csv` | bridge — the full production surface (46 `(m,T)` cells, `m=0…5`, `T=30…300`) | ✅ |
-| `boot_out/calib/surface_ppp_boot.csv` | output — the applied calibration (Table 8) | ✅ |
-| `boot_out/empirical/ppp_empirical.csv` | output — per-currency verdicts (Table 7) | ✅ |
+| `ppp_pac_diagnostic.csv` | derived — per-currency nuisance persistence (provenance of `pac1=0.27`) | ✅ |
+| `boot_out/calib/surface_ppp_boot.csv` | output — the applied calibration (Table 8; pac1=0.27 family) | ✅ |
+| `boot_out/empirical/ppp_empirical.csv` | output — per-currency verdicts with p-values (Table 7; sieve-own cvs) | ✅ |
+| `boot_out/sensitivity/` | output — nuisance / seed / λ-exact sensitivities behind the Table-7 boundary note (see its `README.md`) | ✅ |
 
 Figure PDFs and the `hl_results*.csv` / `power_comparison.csv` / `limiting_density.csv` are **generated on demand** (git-ignored).
 
@@ -139,7 +142,8 @@ python replicate_section5.py all --outdir section5_out
 python size_power_cbar_comparison.py                        # -> tab_power.tex, power_comparison.csv
 
 # (3) §6   PPP application
-python boot_ppp_cbar.py --full --empirical                  # -> boot_out\  (Tables 7-8)
+python pac_diagnostic.py                                    # -> ppp_pac_diagnostic.csv (pac1 provenance)
+python boot_ppp_cbar.py --full --empirical                  # -> boot_out\  (Tables 7-8; sieve-own cvs + p-values)
 python hl_median_unbiased.py --B 20000 --boot recursive --out hl_results.csv
 python hl_median_unbiased.py --B 20000 --boot wild      --out hl_results_wild.csv
 

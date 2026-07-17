@@ -22,22 +22,23 @@ from __future__ import annotations
 import argparse, math, os, sys
 import pandas as pd
 
-# ---- manuscript v70 literals ----------------------------------------------
+# ---- manuscript v73 literals (v1.2.0: pac1=0.27 surface; sieve-own cvs) ----
 # Table 8: label -> (p, method, cbar*, se, cv, power_feas)
 TAB8 = {
     "iid, MAIC":              (0, "maic",  -12.79, 0.17, -2.46, 0.58),
     "iid, difference-based":  (0, "const", -12.79, 0.17, -2.86, 0.70),
-    "AR(1), MAIC":            (1, "maic",   -9.85, 0.12, -2.11, 0.30),
-    "AR(2), MAIC":            (2, "maic",  -10.37, 0.17, -2.15, 0.31),
+    "AR(1), MAIC":            (1, "maic",  -10.58, 0.14, -2.12, 0.48),
+    "AR(2), MAIC":            (2, "maic",  -11.10, 0.20, -2.19, 0.45),
 }
-# Table 7: currency -> (MZt_asym(II), MZt_cal(III), cv_configfaithful(III))
+# Table 7: currency -> (MZt_asym(II), MZt_cal(III), cv_configfaithful(III),
+#                       pvalue_cf(III))
 TAB7 = {
-    "AUD": (-0.38, -0.87, -2.32), "CAD": (-1.89, -2.06, -2.10),
-    "CHF": ( 2.27,  1.78, -2.10), "GBP": (-0.33, -0.71, -2.11),
-    "JPY": ( 0.17, -0.16, -2.10), "NOK": (-0.77, -0.97, -2.15),
-    "NZD": (-0.33, -0.74, -2.10), "SEK": (-0.95, -1.39, -2.15),
+    "AUD": (-0.38, -0.97, -2.07, 0.575), "CAD": (-1.89, -2.08, -2.07, 0.049),
+    "CHF": ( 2.27,  1.68, -2.14, 0.998), "GBP": (-0.33, -0.78, -2.12, 0.800),
+    "JPY": ( 0.17, -0.22, -2.19, 0.884), "NOK": (-0.77, -0.99, -2.16, 0.726),
+    "NZD": (-0.33, -0.82, -2.03, 0.624), "SEK": (-0.95, -1.44, -2.10, 0.378),
 }
-TOL = dict(cbar=0.05, se=0.03, cv=0.03, power=0.03, mzt=0.03)
+TOL = dict(cbar=0.05, se=0.03, cv=0.03, power=0.03, mzt=0.03, pval=0.02)
 
 
 def bad(x):
@@ -84,13 +85,14 @@ def table7(boot):
         print("  [MISSING] run: python boot_ppp_cbar.py --full --empirical"); return 1
     df = pd.read_csv(p).set_index("currency")
     n = 0; out = []
-    for cur, (m2, m3, cv3) in TAB7.items():
+    for cur, (m2, m3, cv3, pv3) in TAB7.items():
         if cur not in df.index:
             out.append(f"  [FAIL] {cur}: absent from output"); n += 1; continue
         r = df.loc[cur]
         n += chk(f"{cur} MZt(II)",  m2,  r.get("MZt_asym"),          TOL["mzt"], out)
         n += chk(f"{cur} MZt(III)", m3,  r.get("MZt_cal"),           TOL["mzt"], out)
         n += chk(f"{cur} cv(III)",  cv3, r.get("cv_configfaithful"), TOL["cv"],  out)
+        n += chk(f"{cur} p(III)",   pv3, r.get("pvalue_cf"),         TOL["pval"], out)
     print("\n".join(out) if out else "  (all cells within tolerance)")
     print(f"  --> Table 7: {n} mismatch(es)")
     return n

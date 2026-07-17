@@ -26,7 +26,9 @@ from itertools import combinations
 from scipy.stats import norm
 from scipy.integrate import quad
 
-POWERS = [0.30] * 5 + [0.31] * 3   # AUD, CHF, GBP, JPY, NZD (p=1); CAD, NOK, SEK (p=2)
+POWERS = [0.48] * 5 + [0.45] * 3   # AUD, CHF, GBP, JPY, NZD (p=1); CAD, NOK, SEK (p=2)
+# v1.2.0: feasible powers at the tangency under the pac1=0.27 nuisance family
+# (Table pppsurface: 0.4822 at p=1, 0.4491 at p=2, rounded to two decimals).
 RHOS = (0.37, 0.41)                # mean pairwise correlations, Section 6.3
 
 

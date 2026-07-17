@@ -5,6 +5,57 @@ follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [semantic](https://semver.org/). Version and archival DOIs are recorded in
 `CITATION.cff`.
 
+## [1.2.0] — 2026-07-17
+
+Recalibration of the AR(p) nuisance persistence and redesign of the empirical
+critical values. The pre-1.2.0 `pac1 = 0.4` was traced to an earlier four-lag
+diagnostic and lies outside the entire empirical range of the eight Model-LB
+residual series (first-lag ADF coefficients −0.01…0.39, median 0.27); the
+canonical value is now **0.27**, with per-currency provenance archived. The
+empirical config-faithful critical values switch from the common nuisance
+family to **sieve-own** — each currency's fitted ADF φ̂ at its BIC order, held
+fixed across replications — so the simulated null prices the configuration in
+every dimension the data identify (break dates, break count, AR order,
+short-run dynamics), matching the Procedure-2 register documented in
+`MC_vs_BOOTSTRAP.md`. Manuscript pair: v73.
+
+### Changed
+- `boot_ppp_cbar.py`: `pac1` CLI-exposed (`--pac1`, default 0.27; overwrite
+  guard for non-canonical values); `--pac-hw` exposed; empirical block
+  default **sieve-own** (`estimate_phi_adf`, companion-matrix stationarity
+  gate) with `--common-nuisance` reproducing the family design (own `--out`
+  required); `pac1`/`pac_hw` recorded in `meta.json`.
+- `dependence_bound.py`, `dependence_count_pmf.py`: per-currency feasible
+  powers 0.30/0.31 → 0.48/0.45 (Table 8 at pac1=0.27). Consequences:
+  P(zero|H1) independence 0.055 → 0.0063; under dependence 0.21–0.23 →
+  0.086–0.098; the modal rejection count under dependence is now 3, not 0.
+- `boot_out/` regenerated: surface (`cbar*(2,52,p)`: −10.58/−11.10 at p=1/2,
+  feasible power 0.48/0.45) and empirical block (sieve-own cvs; new
+  `pvalue_cf` and `nuisance` columns). The p=0 cells reproduce v1.1.9
+  bit-for-bit (they are pac1-free), validating that the patch touched
+  nothing but the nuisance.
+
+### Added
+- `pac_diagnostic.py` → `ppp_pac_diagnostic.csv`: per-currency PACF of
+  Δ(LB residual) and first-lag ADF coefficients — the provenance of 0.27.
+- `boot_ppp_cbar.py --bp`: single-cell calibration at EXACT break positions
+  (bypasses the λ grid; e.g. `--bp 12 19` = the empirical 1985+1992
+  configuration, spacing 0.135 < the 0.233 averaging-grid minimum).
+- `boot_ppp_cbar.py --seed-base`: alternative MC streams (quantifies the
+  ≈0.02 resolution of the config-faithful cv).
+- Empirical p-values (`pvalue_cf`): fraction of the simulated null below the
+  observed statistic (se ≈ 0.0015 at p ≈ 0.05, R = 20,000).
+- `boot_out/sensitivity/`: archived designs behind the manuscript's Table-7
+  boundary note — common-family 0.27/0.37/legacy-0.40, three seed streams,
+  λ-exact cells; see its `README.md`.
+
+### Empirical consequence
+The Canadian dollar sits exactly at the 5% boundary of its sieve null
+(p = 0.049–0.050 across all archived streams and calibrations; the binary
+verdict at the quantile alternates within its ≈0.02 MC resolution). Reported
+in the manuscript as a boundary, not a rejection. All other verdicts
+unchanged (p ≥ 0.38).
+
 ## [1.1.9] — 2026-07-15
 
 Label-integrity pass on the Table 3 / Figure 3 generator, plus a provenance

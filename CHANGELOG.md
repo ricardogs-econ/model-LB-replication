@@ -17,7 +17,8 @@ family to **sieve-own** — each currency's fitted ADF φ̂ at its BIC order, he
 fixed across replications — so the simulated null prices the configuration in
 every dimension the data identify (break dates, break count, AR order,
 short-run dynamics), matching the Procedure-2 register documented in
-`MC_vs_BOOTSTRAP.md`. Manuscript pair: v73.
+`MC_vs_BOOTSTRAP.md`. Manuscript pair: v73. Archived on Zenodo (version DOI
+`10.5281/zenodo.21419646`).
 
 ### Changed
 - `boot_ppp_cbar.py`: `pac1` CLI-exposed (`--pac1`, default 0.27; overwrite

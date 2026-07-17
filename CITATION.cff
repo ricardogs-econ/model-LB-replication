@@ -47,6 +47,9 @@ identifiers:
   - type: doi
     value: 10.5281/zenodo.21398025
     description: "Version DOI (v1.1.9 snapshot)"
+  - type: doi
+    value: 10.5281/zenodo.21419646
+    description: "Version DOI (v1.2.0 snapshot)"
 preferred-citation:
   type: article
   title: "Level Breaks and Finite-Sample GLS Detrending: The Point-Optimal Unit Root Test and the Purchasing Power Parity Puzzle"

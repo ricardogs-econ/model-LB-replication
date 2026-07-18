@@ -1,5 +1,5 @@
 {
-  "version": "1.2.0",
+  "version": "1.2.1",
   "title": "Replication package: Level Breaks and Finite-Sample GLS Detrending",
   "description": "Replication code and public data for the paper 'Level Breaks and Finite-Sample GLS Detrending: The Point-Optimal Unit Root Test and the Purchasing Power Parity Puzzle'. One numerical kernel (mlb_core.py) with a pure-Python fallback (mlb_kernel.py), one driver per section (3-4 calibration, 5 robustness, 6 PPP application), a stand-alone tool to apply the Model LB test to any series (run_model_lb.py), and a Pesaran cross-sectional-dependence diagnostic (pesaran_cd.py).",
   "license": {"id": "MIT"},

@@ -35,7 +35,7 @@ OUTPUTS (this module is compute-only; it draws no figures):
     - prints the power table (rejection rates +/- Monte Carlo error)
     - writes tab_power.tex (the table body)
     - writes power_comparison.csv (the power curves; generate_figures.py reads
-      it to render fig_power.pdf)
+      it to render Figure_3.pdf)
 
 USAGE:
     python size_power_cbar_comparison.py            # production
@@ -322,7 +322,7 @@ def main():
 
     # ---- persist the power-curve data (generate_figures.py draws Figure 3) --
     # This module is compute-only: it writes the curve to power_comparison.csv;
-    # generate_figures.py reads that CSV and renders fig_power.pdf. alpha and
+    # generate_figures.py reads that CSV and renders Figure_3.pdf. alpha and
     # c_alt (the column-(iii) alternative) are stored so the figure's annotation
     # lines are reproducible without hard-coded constants.
     curve_csv = os.path.join(args.outdir, "power_comparison.csv")

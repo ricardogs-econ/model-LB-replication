@@ -5,6 +5,37 @@ follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [semantic](https://semver.org/). Version and archival DOIs are recorded in
 `CITATION.cff`.
 
+## [1.2.1] — 2026-07-18
+
+Publication-quality figure pass and expanded documentation. No numerical
+routine, seed, artifact, or table value changed; this release only affects
+how the five figures render and how the package is documented.
+
+### Changed
+- `generate_figures.py`: the five figures switch from grayscale to the
+  **Okabe–Ito (2008) colorblind-safe palette** (line-style redundancy kept, so
+  each series still reads when desaturated, under color-vision deficiency, or
+  in a black-and-white photocopy). Canvas sizes are matched to the
+  manuscript's actual print width instead of an on-screen size later crushed
+  by `\includegraphics` — the crushing is what made in-figure text and markers
+  render below their nominal point size on the page. Fonts are embedded as
+  CID TrueType (`pdf.fonttype = 42`), not Type-3 bitmaps. Figure 4 moves to a
+  2×4 grid (matching the print aspect ratio) and Figure 5's legend moves below
+  the axis so it no longer covers the bottom currency's lines and "collapse"
+  label. Output files follow the **Wiley convention** — `Figure_1.pdf` …
+  `Figure_5.pdf` (previously `cbar_surface.pdf`, `fig_power.pdf`, etc.).
+- `.gitignore`, `size_power_cbar_comparison.py`, and the `README` exhibit map
+  updated to the new figure file names.
+
+### Added (documentation)
+- `README.md`: a **Monte Carlo design** section documenting the full tangency
+  search (grid, `R_cv = 10,000` / `R_pow = 5,000`, interpolated 0.50 crossing
+  with delta-method SE, the MAIC-at-`T=30` fallback and its 23 flagged cells),
+  the `m = 0` seed-averaging over `K = 20` independent streams, the extension
+  grid, and the two long-run-variance estimators. An **integrity-check**
+  subsection on the θ-invariance selftest (confirmed to ten significant
+  digits). Links to the article preprints (SSRN, MPRA no. 130117).
+
 ## [1.2.0] — 2026-07-17
 
 Recalibration of the AR(p) nuisance persistence and redesign of the empirical

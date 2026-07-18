@@ -36,7 +36,7 @@ files, and every table and figure ships with a one-command self-check.
 
 ```text
 compute modules  ──write──▶  CSV artifacts  ──read──▶  generate_figures.py ──▶ PDFs
-(numba Monte Carlo)          (traceable data)          (grayscale, no simulation)
+(numba Monte Carlo)          (traceable data)          (color, no simulation)
 ```
 
 The numerical work lives in **one kernel** (`mlb_core.py`, with a pure-Python
@@ -117,7 +117,7 @@ python run_model_lb.py --csv myseries.csv --col rer --date-col year \
 
 | File | Role |
 |---|---|
-| `generate_figures.py` | **The single figure script.** Reads the CSV artifacts and renders all five figures in grayscale. Run `python generate_figures.py` (or `--only fig2`). No simulation. |
+| `generate_figures.py` | **The single figure script.** Reads the CSV artifacts and renders all five figures (`Figure_1.pdf`…`Figure_5.pdf`) with a colorblind-safe palette (Okabe–Ito, line-style redundancy retained). Run `python generate_figures.py` (or `--only fig2`). No simulation. |
 
 ### Tools & diagnostics
 
@@ -178,7 +178,7 @@ python hl_median_unbiased.py --B 20000 --boot wild      --out hl_results_wild.cs
 
 # (4) figures
 python replicate_section3_4.py --limiting-density           # -> limiting_density.csv (Fig 1 data)
-python generate_figures.py                                  # -> all 5 figure PDFs (grayscale)
+python generate_figures.py                                  # -> Figure_1.pdf … Figure_5.pdf (color)
 
 # (5) validate
 python reconcile_tables.py
@@ -199,11 +199,11 @@ python reconcile_boot.py --boot-out boot_out
 | **Table 6** break dates | *(input)* | `exog_dates.csv` |
 | **Table 7–8** PPP verdicts & applied calibration | `boot_ppp_cbar.py --full --empirical` | `boot_out/` |
 | **Table 9** half-lives | `hl_median_unbiased.py --boot wild` | `hl_results_wild.csv` |
-| **Fig 1** limiting null law | `replicate_section3_4.py --limiting-density` → `generate_figures.py --only fig1` | `limiting_density.pdf` |
-| **Fig 2** the c̄(m,T) surface | `generate_figures.py --only fig2` | `cbar_surface.pdf` |
-| **Fig 3** power curves | `size_power_cbar_comparison.py` → `generate_figures.py --only fig3` | `fig_power.pdf` |
-| **Fig 4** real exchange rates | `generate_figures.py --only fig4` | `fig_rer_series.pdf` |
-| **Fig 5** half-life forest | `hl_median_unbiased.py …` → `generate_figures.py --only fig5` | `fig_hl_forest.pdf` |
+| **Fig 1** limiting null law | `replicate_section3_4.py --limiting-density` → `generate_figures.py --only fig1` | `Figure_1.pdf` |
+| **Fig 2** the c̄(m,T) surface | `generate_figures.py --only fig2` | `Figure_2.pdf` |
+| **Fig 3** power curves | `size_power_cbar_comparison.py` → `generate_figures.py --only fig3` | `Figure_3.pdf` |
+| **Fig 4** real exchange rates | `generate_figures.py --only fig4` | `Figure_4.pdf` |
+| **Fig 5** half-life forest | `hl_median_unbiased.py …` → `generate_figures.py --only fig5` | `Figure_5.pdf` |
 
 ---
 
@@ -220,10 +220,119 @@ public sources.
 
 ---
 
-## Reproducibility
+## Monte Carlo design
+
+The calibration surface `c̄(m,T)` (Table 1) and every critical value behind
+it are located by the tangency procedure implemented in
+`replicate_section3_4.py`. The paper (§4) states only the essential design
+parameters and points here for the full procedural detail.
+
+**Grid.** Sample sizes `T ∈ {30, 45, 50, 60, 80, 100, 150, 200, 300}` — the
+upper end matching Carrion-i-Silvestre, Kim & Perron (2009); the lower end
+covering the short cross-country panels the application motivates — and
+break counts `m ∈ {0, …, 5}`, with a minimum sample size imposed per `m` so
+every regime contains enough observations. Break fractions sit on a grid in
+`[ε, 1−ε]` with trimming `ε = 0.15` and a minimum spacing of `0.15` between
+breaks.
+
+**Tangency search.** For each configuration and each candidate `c̄` on the
+evaluation grid `{−20, −19.5, …, −3}` (step 0.5): (i) `R_cv = 10,000`
+replications under the null (`c = 0`) of the local-to-unity DGP
+`y_t = Z_t'θ + u_t`, `u_t = (1 + c/T) u_{t−1} + ε_t`, deliver the 5% critical
+value of the point-optimal (`PT`) statistic, which rejects for small values;
+(ii) `R_pow = 5,000` replications under the local alternative *at* `c = c̄`
+deliver its rejection rate against that critical value; (iii) the
+`(c̄, power)` pairs are collected across the grid and the crossing of power
+0.50 is located by linear interpolation, reported with the delta-method
+standard error `se(c̄*) = se(power)/|slope|` (slope taken in the bracketing
+interval, `se(power) = √(0.5·0.5/R_pow)`). The criterion is power at the
+*single point* `c = c̄`, not average power over a grid of alternatives —
+averaging dilutes the objective with near-null alternatives at which no test
+has power and drives the selected `c̄` to the grid boundary.
+
+Where the curve never crosses 0.50 within the grid — an issue only for the
+autoregressive-MAIC long-run-variance estimator at the shortest sample
+sizes — the search falls back to the grid value closest to 0.50 and flags
+the cell explicitly rather than reporting a false precision. In the
+production surface this fallback binds in 23 cells, all under MAIC at
+`T = 30` (1, 7, and 15 cells at `m = 0, 1, 2`): located values range from
+−13.5 to −20 with only four at the grid edge, and the power attained never
+exceeds 0.48 — the estimator, not the grid, is the binding constraint, so any
+edge truncation understates the degeneracy the flags record.
+
+**Seed averaging for the `m = 0` cells.** Each `m ≥ 1` cell of the surface
+averages the interpolated tangency over the break-location configurations
+within the cell, so seed-level simulation noise is averaged away as a
+by-product. The `m = 0` cell has no break locations: a single tangency
+search is one draw of the located crossing, whose seed-to-seed standard
+deviation we measure at approximately 0.07 — about 2.5 times the
+delta-method standard error of a single refined search, which captures only
+the binomial noise of the power estimates around a fixed crossing, not the
+seed-to-seed scatter of the crossing's location. Left unaveraged, this
+scatter is large enough to displace individual `m = 0` cells by several
+tenths and to produce spurious non-monotonicities in `T`. The production
+design therefore repeats the entire `m = 0` calibration over `K = 20`
+independent pseudo-random streams — the seed offsets are multiples of
+`10^9`, exceeding the largest internal offset of a single calibration so
+that no two searches share a seed integer, each integer expanded through
+NumPy's `SeedSequence` entropy hashing before it initializes the generator,
+so the resulting streams are statistically independent — and reports the
+across-seed mean; the standard error attached to each `m = 0` cell is the
+across-seed standard deviation divided by `√K` (≈0.04 at `T = 30`, shrinking
+with `T`), which dominates and replaces the within-search delta-method
+figure. `python mlb_core.py --post` reproduces the entire surface, including
+the `m = 0` averaging and its aggregation, in a single deterministic run.
+
+**Evaluation grid for the tangency.** The power curve from which `c̄*` is
+read — by the interpolation rule and delta-method standard error above — is
+traced on the grid `{−20, −19.5, …, −3}` in steps of 0.5. The grid serves
+only to bracket the crossing of 0.50 densely; `c̄*` itself is the
+interpolated crossing, not a grid point.
+
+**Extension grid.** A targeted extension of the calibration grid to
+`T ∈ {400, 600}` for `m ∈ {4, 5}` — 22 additional configurations under the
+same seed policy and checkpointing — supports the intercept discussion in
+§4.2 of the paper (the `m = 4, 5` intercepts moving from −7.33 and −7.38 to
+−7.21 and −7.24). Its output is archived separately and does not enter the
+baseline surface.
+
+**Long-run variance.** Computed by two methods, both applied to the
+OLS-detrended series `y_t − Z_t'θ̂_OLS` rather than the raw series: a simple
+estimator that takes the sample variance of the first difference of the
+detrended series (consistent under the i.i.d. null, and equivalent to the
+autoregressive estimator with zero lags), and the autoregressive
+spectral-density estimator of Perron & Ng (1998) with MAIC lag selection
+(Ng & Perron 2001) up to `k_max = 12`. Detrending *before* estimating `s²`
+is essential: the level dummies induce jumps in the raw first difference at
+the break dates, so estimating `s²` from the undetrended series would
+contaminate it with the deterministic component. The paper reports the
+sensitivity of `c̄` and the critical values to the two methods. Full design
+parameters, seeds, and the raw per-replication vectors are archived to
+permit exact reproduction.
+
+---
+
+## Reproducibility & integrity checks
 
 - **Deterministic** given the seeds and replication counts stated in each
   module header and in `MC_vs_BOOTSTRAP.md`.
+- **Invariance check.** The exact θ-invariance that the paper establishes for
+  the GLS-detrended statistic (it does not depend on the break magnitudes at
+  all) doubles as the single most useful integrity check on this
+  implementation: because the detrended series — and hence every statistic —
+  is identically independent of the break magnitudes, an implementation can
+  be verified by generating the same innovation `u_t` and recomputing the
+  statistic at `θ = 0` and at a large `θ`: the two must coincide to machine
+  precision. A nonzero discrepancy signals that the deterministic component
+  is not being removed exactly — the single most consequential coding error
+  possible here. We use this check rather than a sample variance of the
+  innovation, which is `O_p(1/T)` even under correct code and would raise
+  false alarms. A Monte Carlo verification across `m ∈ {0, 1, 2}` and `T` up
+  to 400, with `θ` ranging from zero through the large-shift class
+  `T^{1/2+η}`, confirms the invariance to **ten significant digits**; the
+  residual discrepancy in the most extreme cell is at the level of
+  floating-point cancellation, not of the invariance itself. Run via
+  `python mlb_core.py --selftest`.
 - Numba kernels are validated against `arch.DFGLS` to 10 decimals;
   cross-platform bit-parity (Windows / Linux) is checked.
 - **No pandas** — all I/O uses the CSV standard library.
@@ -241,6 +350,15 @@ If you use this software, please cite **both** the article and this archive
 > The Point-Optimal Unit Root Test and the Purchasing Power Parity Puzzle.*
 > Replication package archived on Zenodo — concept DOI
 > [10.5281/zenodo.21229773](https://doi.org/10.5281/zenodo.21229773).
+
+### Preprint versions
+
+The article itself (not just this replication package) is also available as
+a preprint, ahead of and independent from journal review:
+
+- **SSRN**: [papers.ssrn.com/sol3/papers.cfm?abstract_id=7138278](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7138278)
+- **MPRA** (Munich Personal RePEc Archive), paper no. 130117:
+  [mpra.ub.uni-muenchen.de/130117/](https://mpra.ub.uni-muenchen.de/130117/)
 
 ---
 

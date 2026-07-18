@@ -9,7 +9,8 @@ follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 
 Publication-quality figure pass and expanded documentation. No numerical
 routine, seed, artifact, or table value changed; this release only affects
-how the five figures render and how the package is documented.
+how the five figures render and how the package is documented. Archived on
+Zenodo (version DOI `10.5281/zenodo.21434126`).
 
 ### Changed
 - `generate_figures.py`: the five figures switch from grayscale to the

@@ -36,14 +36,17 @@ files, and every table and figure ships with a one-command self-check.
 
 ```text
 compute modules  ──write──▶  CSV artifacts  ──read──▶  generate_figures.py ──▶ PDFs
-(numba Monte Carlo)          (traceable data)          (color, no simulation)
+(numba Monte Carlo)          (traceable data)          (grayscale, no simulation)
 ```
 
 The numerical work lives in **one kernel** (`mlb_core.py`, with a pure-Python
 fallback). Computation and plotting are strictly separated: compute modules
 only write CSVs; `generate_figures.py` only reads them. A referee can
-regenerate every figure from the shipped data **without running any
-simulation**.
+regenerate the CSV-backed figures (`Figure_3`, `Figure_S1`, `Figure_S2`) from
+the shipped data **without running any simulation**. The two referee-response
+figures, `Figure_1.pdf` and `Figure_2.pdf`, are the exception: each is a
+small, self-contained Monte Carlo (well under a minute) run directly by
+`overdetrend_power.py` / `materiality_figure.py` — see "Figures" below.
 
 ---
 
@@ -89,7 +92,7 @@ python run_model_lb.py --csv myseries.csv --col rer --date-col year \
 
 | File | Reproduces |
 |---|---|
-| `replicate_section3_4.py` | **§3–4** — the calibration surface `c̄(m,T)` and the five critical values → `cbar_surface.csv`. `--limiting-density` writes the Figure-1 null-law data. Compute-only. |
+| `replicate_section3_4.py` | **§3–4** — the calibration surface `c̄(m,T)` and the five critical values → `cbar_surface.csv`. `--limiting-density` writes the Figure S1 null-law data. Compute-only. |
 | `replicate_section5.py` | **§5** — robustness (`ar1`, `oracle`, `trimming`) and the power comparison (`power`). |
 | `replicate_section6.py` | **§6** — the PPP application: admissibility `sweep`, AR(p) `boot`, median-unbiased `hl`. |
 
@@ -98,10 +101,11 @@ python run_model_lb.py --csv myseries.csv --col rer --date-col year \
 | File | Produces |
 |---|---|
 | `robustness.py` | §5 experiments: LRV-estimator choice, AR(1) size/power, recalibration, trimming, cross-validation. |
-| `size_power_cbar_comparison.py` | §5 power table (`tab_power.tex`) and the Figure-3 curve data (`power_comparison.csv`). |
+| `size_power_cbar_comparison.py` | §5 power table (`tab_power.tex`) and the curve data (`power_comparison.csv`) behind the **legacy** power-comparison figure (superseded by `overdetrend_power.py`; see "Figures" below). |
 | `boot_ppp_cbar.py` | §6 applied calibration and the per-currency empirical block (Tables 7–8). See the nuisance note below. |
-| `hl_median_unbiased.py` | §6 median-unbiased (Andrews–Chen) half-lives with grid-t / wild bootstrap CIs (Table 9). |
+| `hl_median_unbiased.py` | §6 median-unbiased (Andrews–Chen) half-lives with grid-t / wild bootstrap CIs (Table 9); writes the Figure S2 forest-plot data. |
 | `ppp_sweep_bis.py` | Exhaustive BIS-universe admissibility sweep (the funnel / gate table). |
+| `ppp_two_axis_columns.py` | §6 two-axis decomposition of Table `tab:ppp`'s column (III): isolates the SIZE axis (critical value) from the DETRENDING/POWER axis (`c̄`) by adding column (N), `c̄=-7` paired with a finite-sample cv. Self-contained (no import from the rest of the package; reads `ppp_ar_diagnostic.csv` as a data input, see below). **`--validate` reproduces the published AR order `p` for 8 of 8 currencies as of v1.3.0; the simulated critical value still does not** — see the note at the end of this table. |
 
 > **Nuisance treatments in `boot_ppp_cbar.py` (v1.2.0).** The **surface** is
 > calibrated under an AR(p) coefficient *family* — first PAC fixed at
@@ -113,11 +117,54 @@ python run_model_lb.py --csv myseries.csv --col rer --date-col year \
 > `--bp` calibrates an exact break configuration, and `--seed-base` quantifies
 > the Monte Carlo resolution of the critical value.
 
-### Figures — one entry point
+> **`ppp_two_axis_columns.py --validate` still fails, at the critical value
+> only (v1.3.0).** The AR-order mismatch that used to fail this check is
+> **resolved**: the published `p` is `ppp_ar_diagnostic.csv`'s `k_bic_cq`
+> column (produced by `select_ar_order.py`, an ADF-style regression that
+> keeps the level term, `kmax=10`) — the same column `boot_ppp_cbar.py`
+> reads for `p_hat`. `ppp_two_axis_columns.py`'s own internal BIC search
+> (`select_p_by_bic`) fits a *different* model — a pure AR(p) on the
+> first-differenced residual, no level term, `PMAX_BIC=6` — a different
+> order-selection question that need not, and empirically does not, agree
+> with `k_bic_cq`. By default `ppp_two_axis_columns.py` now **reads** `p`
+> from `ppp_ar_diagnostic.csv` (`--ar-diagnostic`, matching the article and
+> `boot_ppp_cbar.py`) instead of recomputing it; `--recompute-p` restores the
+> old independent-BIC behavior as an explicit diagnostic mode. With the
+> default behavior, `--validate` reproduces the published `p` for **8 of 8**
+> currencies (previously 0 of 8 — see `CHANGELOG.md`'s `[1.3.0]` entry for
+> the numbers before the fix), and the deterministic statistics `MZt (II)`/
+> `MZt (III)` agree with the published table for 7 of 8 (CHF differs by
+> ≈0.03).
+>
+> What is **still open**: the simulated critical value `cv (III)` — the one
+> genuinely Monte Carlo quantity in the comparison — is systematically more
+> negative than published for all 8 currencies (≈ −0.05 to −0.24), confirmed
+> at `--nrep 15000` (simulation SE ≈ 0.01) not to be Monte Carlo noise. The
+> AR *order* is no longer the issue; the AR(p) *coefficients*
+> `fit_ar_at_order` fits (plain AR(p) on the differenced residual) may not
+> match whatever the production pipeline used to calibrate the surface
+> behind `cv(III)`. Root cause not yet identified. **Do not add column (N) to
+> `tab:ppp` until this reconciles** (this is the B-4 item in the project's
+> internal tracking).
 
-| File | Role |
-|---|---|
-| `generate_figures.py` | **The single figure script.** Reads the CSV artifacts and renders all five figures (`Figure_1.pdf`…`Figure_5.pdf`) with a colorblind-safe palette (Okabe–Ito, line-style redundancy retained). Run `python generate_figures.py` (or `--only fig2`). No simulation. |
+### Figures
+
+Three figures are CSV-then-plot pairs read by `generate_figures.py`; two are
+short, self-contained Monte Carlo + plot scripts of their own (fast enough —
+well under a minute — that the CSV-caching split was not worth adding for
+them). See each file's header for full usage.
+
+| File | Produces | Role |
+|---|---|---|
+| `materiality_c7_vs_surface.py` | `cbar_surface`-style printed table (no PDF) | Shared core for the two referee-response scripts below (`build_Z`, `detrender`, `Lmat`, `mzt`, `CV_ASY`, the tabulated `CBAR_STAR_BY_P` surface). Standalone: does the calibration surface materially beat the plain `c̄=-7` recipe? Prints the size/power contrast for (A) `c̄=-7`+asymptotic cv, (A′) `c̄=-7` size-corrected, (B) `c̄*(m,T)` size-corrected. |
+| `overdetrend_power.py` | `Figure_1.pdf` | Main text — size-corrected power lost by reusing a trend-break detrending value (`-13.5`, `-17`, `-21.7`) instead of the correct no-trend `c̄=-7`. |
+| `materiality_figure.py` | `Figure_2.pdf` | Main text — empirical size of the "`c̄=-7` + asymptotic cv" recipe vs `T`, for `m=0,1,2`: the over-rejection the finite-sample surface corrects. |
+| `generate_figures.py` | `Figure_3.pdf`, `Figure_S1.pdf`, `Figure_S2.pdf` | Reads CSV artifacts, no simulation. `Figure_3` (real exchange rates) needs `ppp_panel.csv`+`exog_dates.csv` (shipped); `Figure_S1` (limiting null law) needs `limiting_density.csv` (`replicate_section3_4.py --limiting-density`); `Figure_S2` (half-life forest) needs `hl_results.csv`+`hl_results_wild.csv` (`hl_median_unbiased.py`). Also renders two **legacy** figures (superseded, not cited by the manuscript, kept only so the underlying diagnostics stay regenerable) to `legacy_figures/`: the `c̄(m,T)` surface (`cbar_surface.csv`) and the old power-curve comparison (`power_comparison.csv`). Run `python generate_figures.py` (or `--only figS1`, etc.). |
+
+Figure numbering follows the manuscript exactly: main-text figures are
+`Figure_1`–`Figure_3` (Wiley convention, plain number); supplement figures
+carry the `S` prefix LaTeX assigns them there
+(`\renewcommand{\thefigure}{S\arabic{figure}}`), so `Figure_S1`/`Figure_S2`.
 
 ### Tools & diagnostics
 
@@ -130,6 +177,18 @@ python run_model_lb.py --csv myseries.csv --col rer --date-col year \
 | `dependence_bound.py` | §6.3 dependence-adjusted probability of zero rejections (one-factor Gaussian). |
 | `dependence_count_pmf.py` | §6.3 full rejection-count PMF by exact enumeration. |
 | `check_lam_spread.py` | §4.3 lookup-vs-λ-polynomial diagnostic (thin wrapper over `mlb_core.surface_diagnostics`). |
+
+### Online supplement §S2 numerics
+
+Corroborate Theorem S2.1 (asymptotic equicontinuity of the power family) and
+its observable implication. Pure numpy; deterministic (`assumption1_numerics.py`)
+or Monte Carlo with a documented seed (`modulus_numerics.py`); no dependency on
+the kernel.
+
+| File | Role |
+|---|---|
+| `assumption1_numerics.py` | Closed-form vs. general construction of the quasi-differenced quadratic form, the Gram diagonal identity, non-degeneracy, the differencing corner (Lemma 2), the DF/ERS trace closure, and the `O((m+1)/T)` remainder — all at machine precision, no simulation. |
+| `modulus_numerics.py` | Monte Carlo estimate of the empirical modulus `M_T(h)` of the power family across `T ∈ {30,45,52,60,150,300}` (52 = the PPP panel's exact span); confirms `M_T(h)` shrinks with `h` and is stable in `T`, the observable content of Theorem S2.1. `--selftest` checks the core against `assumption1_numerics.py`'s closed form. |
 
 ### Self-checks
 
@@ -150,6 +209,7 @@ python run_model_lb.py --csv myseries.csv --col rer --date-col year \
 | `boot_out/calib/surface_ppp_boot.csv` | output — the applied calibration (Table 8; `pac1 = 0.27` family) |
 | `boot_out/empirical/ppp_empirical.csv` | output — per-currency verdicts with p-values (Table 7; sieve-own CVs) |
 | `boot_out/sensitivity/` | output — nuisance / seed / λ-exact sensitivities behind the Table-7 boundary note (see its `README.md`) |
+| `modulus_table.csv`, `modulus_table_T52.csv`, `modulus_table_small.csv` | output — `modulus_numerics.py`'s empirical modulus `M_T(h)`, the observable implication of Theorem S2.1 (full grid; the `T=52` cell; a quick-test subset) |
 
 Figure PDFs and the `hl_results*.csv` / `power_comparison.csv` /
 `limiting_density.csv` files are **generated on demand** (git-ignored).
@@ -177,8 +237,10 @@ python hl_median_unbiased.py --B 20000 --boot recursive --out hl_results.csv
 python hl_median_unbiased.py --B 20000 --boot wild      --out hl_results_wild.csv
 
 # (4) figures
-python replicate_section3_4.py --limiting-density           # -> limiting_density.csv (Fig 1 data)
-python generate_figures.py                                  # -> Figure_1.pdf … Figure_5.pdf (color)
+python overdetrend_power.py                                 # -> Figure_1.pdf (self-contained MC, <1 min)
+python materiality_figure.py                                # -> Figure_2.pdf (self-contained MC, <1 min)
+python replicate_section3_4.py --limiting-density           # -> limiting_density.csv (Fig S1 data)
+python generate_figures.py                                  # -> Figure_3, Figure_S1, Figure_S2 (+ legacy/)
 
 # (5) validate
 python reconcile_tables.py
@@ -199,11 +261,13 @@ python reconcile_boot.py --boot-out boot_out
 | **Table 6** break dates | *(input)* | `exog_dates.csv` |
 | **Table 7–8** PPP verdicts & applied calibration | `boot_ppp_cbar.py --full --empirical` | `boot_out/` |
 | **Table 9** half-lives | `hl_median_unbiased.py --boot wild` | `hl_results_wild.csv` |
-| **Fig 1** limiting null law | `replicate_section3_4.py --limiting-density` → `generate_figures.py --only fig1` | `Figure_1.pdf` |
-| **Fig 2** the c̄(m,T) surface | `generate_figures.py --only fig2` | `Figure_2.pdf` |
-| **Fig 3** power curves | `size_power_cbar_comparison.py` → `generate_figures.py --only fig3` | `Figure_3.pdf` |
-| **Fig 4** real exchange rates | `generate_figures.py --only fig4` | `Figure_4.pdf` |
-| **Fig 5** half-life forest | `hl_median_unbiased.py …` → `generate_figures.py --only fig5` | `Figure_5.pdf` |
+| **Fig 1** over-detrending power loss | `overdetrend_power.py` | `Figure_1.pdf` |
+| **Fig 2** empirical size at `c̄=-7` | `materiality_figure.py` | `Figure_2.pdf` |
+| **Fig 3** real exchange rates | `generate_figures.py --only fig3` | `Figure_3.pdf` |
+| **Fig S1** limiting null law | `replicate_section3_4.py --limiting-density` → `generate_figures.py --only figS1` | `Figure_S1.pdf` |
+| **Fig S2** half-life forest | `hl_median_unbiased.py …` → `generate_figures.py --only figS2` | `Figure_S2.pdf` |
+| *legacy* the `c̄(m,T)` surface | `generate_figures.py --only legacy-cbarsurface` | `legacy_figures/Figure_legacy_cbar_surface.pdf` |
+| *legacy* old power-curve comparison | `size_power_cbar_comparison.py` → `generate_figures.py --only legacy-power` | `legacy_figures/Figure_legacy_power_comparison.pdf` |
 
 ---
 
@@ -339,6 +403,69 @@ permit exact reproduction.
 - Provenance and the per-version changelog are in `CHANGELOG.md`; the
   dependency / data flow is in `DEPENDENCY_GRAPH.md`.
 
+### Oracle recalibration (§5 robustness footnote)
+
+Substituting any deterministic divisor for the long-run-variance estimator
+cancels identically from the rejection rule
+(`N(c̄)/v < cv₅(c̄)/v ⟺ N(c̄) < cv₅(c̄)`). `robustness.py oracle` and the
+divisor-free (estimated-`s²`) tangency search share the same deterministic
+seed derivation (`_oracle_seed`, keyed only on `T`, `m`, `ρ`), so the two
+experiments are driven by bit-identical innovation draws: the oracle
+recalibration run confirms the cancellation to Monte Carlo seed identity —
+matching rejection decisions seed by seed, not just matching rejection
+rates. Output: `oracle_serial.csv` (`python robustness.py oracle`).
+
+### Lag-selection robustness (§6.2/§6.4 footnote)
+
+The paper's headline half-life table (Table 9) caps the AR order at
+`p ≤ 2` for every currency, selected by BIC on the Model LB (level-break)
+residual, common 1973–2024 (`T = 52`) sample. `select_ar_order.py`
+reproduces this and, as a robustness check on the same residual, also runs
+a general-to-specific sequential-*t* search (start at `k = kmax = 10`, drop
+the least significant lag at the 5% level until one survives):
+
+| Currency | BIC order | Sequential-*t* order |
+|---|---|---|
+| AUD | 1 | 2 |
+| CAD | 2 | 2 |
+| CHF | 1 | 1 |
+| GBP | 1 | **8** |
+| JPY | 1 | 1 |
+| NOK | 2 | 2 |
+| NZD | 1 | 1 |
+| SEK | 2 | 2 |
+
+Seven of the eight currencies select an order at or below the `p ≤ 2`
+headline cap under both rules; the pound is the outlier, where the
+sequential-*t* rule selects `k = 8` — the excessive lag count short-span
+sequential rules are known to be prone to. Unit-root verdicts are
+unaffected by the choice of rule (Table 7); the disagreement bears only on
+the half-life estimate (Table 9). Full diagnostic, both the constant-mean
+and level-break specifications, both rules:
+`ppp_ar_diagnostic.csv` (`python select_ar_order.py --start 1973 --kmax 10`).
+
+### Pesaran CD statistic — pairwise breakdown (§6.3 footnote)
+
+`pesaran_cd.py` on the eight univariate Model LB residuals, 1973–2024:
+
+| | Levels | First differences |
+|---|---|---|
+| CD statistic | +14.04 | +8.65 |
+| mean ρ̂ᵢⱼ (signed) | +0.368 | +0.229 |
+| mean \|ρ̂ᵢⱼ\| | 0.412 | 0.402 |
+| *p*-value | <0.0001 | <0.0001 |
+
+Both reject cross-sectional independence; the drop in the first-differenced
+statistic (still highly significant) indicates the dependence is
+contemporaneous rather than a common trend in levels. The gap between the
+signed and absolute means reflects 4 of the 28 currency pairs with negative
+residual correlation — AUD–CHF, CHF–GBP, CHF–NOK, GBP–JPY — three of which
+involve the Swiss franc; immaterial to the paper's argument, which turns on
+the sign of the positive mean correlation (the input to the §6.3
+dependence-adjusted probability bound, `dependence_bound.py`), not its
+magnitude. Reproduce: `python pesaran_cd.py --start 1973` (levels) and
+`--difference` (first differences).
+
 ---
 
 ## Citation
@@ -367,3 +494,14 @@ a preprint, ahead of and independent from journal review:
 Code is released under the **MIT License** (`LICENSE`). The bundled public data
 are redistributed under their original terms (BIS terms of use; World Bank CPI
 under CC-BY-4.0); see the data-source notes above.
+
+**Harvard Dataverse deposit.** The data-only Dataverse deposit ("Replication
+Data for: ...") takes a single license/terms selection for the whole dataset,
+separate from this repository's split MIT (code) / CC-BY-4.0 (World Bank CPI)
+/ BIS terms-of-use (BIS rates) scheme. Both upstream sources require
+attribution on redistribution — World Bank data is explicitly CC-BY-4.0, and
+the BIS terms of permitted use require citing the BIS as the source — so
+**CC0** (a public-domain dedication with no attribution requirement) is not a
+correct choice for that deposit's terms; it conflicts with the attribution
+language already in this README and in the data notice at the foot of
+`LICENSE`. Set the Dataverse dataset's terms to **CC BY 4.0** to match.

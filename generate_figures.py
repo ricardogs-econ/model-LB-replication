@@ -1,14 +1,23 @@
 #!/usr/bin/env python3
 # =============================================================================
-# generate_figures.py -- the single figure entry point for the Model LB paper.
+# generate_figures.py -- figure entry point for the CSV-backed figures of the
+# Model LB paper.
 # =============================================================================
 #
 # This module is READ-ONLY with respect to the science: it never runs a Monte
 # Carlo and never estimates a model. It reads the CSV artifacts written by the
-# compute modules and renders the five publication figures. Keeping all plotting
-# in one place (and all computation in the compute modules) is what makes the
-# figures reproducible from the shipped data alone -- a referee can regenerate
-# every figure in seconds without re-running any simulation.
+# compute modules and renders the figures listed below. Keeping all plotting
+# in one place (and all computation in the compute modules) is what makes
+# these figures reproducible from the shipped data alone -- a referee can
+# regenerate any one of them in seconds without re-running any simulation.
+#
+# Two of the manuscript's current figures are NOT produced here. Figure_1.pdf
+# (over-detrending power loss) and Figure_2.pdf (empirical size at cbar=-7)
+# are each a short, self-contained Monte Carlo + plot living in its own script
+# (overdetrend_power.py, materiality_figure.py respectively) rather than a
+# CSV-then-plot pair: both replications finish in under a minute, so the
+# CSV-caching split used below was not worth the extra moving part for them.
+# See each script's own header for its usage.
 #
 # Figures use a colorblind-safe qualitative palette (Okabe & Ito, 2008) with
 # line-style redundancy retained wherever a series must still read if
@@ -20,21 +29,32 @@
 # nominal point size on the page.
 #
 # Output file names follow the Wiley figure-preparation convention (word
-# "Figure" + the number, e.g. "Figure_1.pdf") -- see
+# "Figure" + the number, e.g. "Figure_3.pdf"); supplement figures carry the
+# "S" prefix LaTeX assigns them there
+# (\renewcommand{\thefigure}{S\arabic{figure}} in the supplement's preamble)
+# -- see
 # https://authors.wiley.com/author-resources/Journal-Authors/Prepare/manuscript-preparation-guidelines.html/figure-preparation.html
 #
 # FIGURE -> INPUT CSV -> PRODUCER
-#   Fig 1  Figure_1.pdf   <- limiting_density.csv   (replicate_section3_4.py --limiting-density)
-#   Fig 2  Figure_2.pdf   <- cbar_surface.csv       (replicate_section3_4.py --full)
-#   Fig 3  Figure_3.pdf   <- power_comparison.csv   (size_power_cbar_comparison.py)
-#   Fig 4  Figure_4.pdf   <- ppp_panel.csv + exog_dates.csv
-#   Fig 5  Figure_5.pdf   <- hl_results.csv + hl_results_wild.csv  (hl_median_unbiased.py)
+#   Fig 3   Figure_3.pdf   <- ppp_panel.csv + exog_dates.csv
+#   Fig S1  Figure_S1.pdf  <- limiting_density.csv   (replicate_section3_4.py --limiting-density)
+#   Fig S2  Figure_S2.pdf  <- hl_results.csv + hl_results_wild.csv  (hl_median_unbiased.py)
+#
+# LEGACY (superseded; not cited by the current manuscript, kept only as a
+# regeneration path for the underlying diagnostic -- see legacy_figures/):
+#   legacy-cbarsurface  legacy_figures/Figure_legacy_cbar_surface.pdf
+#                       <- cbar_surface.csv (replicate_section3_4.py --full)
+#   legacy-power        legacy_figures/Figure_legacy_power_comparison.pdf
+#                       <- power_comparison.csv (size_power_cbar_comparison.py)
+#   These two were shipped as "Figure_2.pdf" / "Figure_3.pdf" through v1.2.0;
+#   the referee-response materiality_figure.py / overdetrend_power.py
+#   comparisons superseded them as the manuscript's Figure_2.pdf/Figure_1.pdf.
 #
 # USAGE
 #   python generate_figures.py                       # all available figures
-#   python generate_figures.py --only fig5           # one figure
+#   python generate_figures.py --only figS2          # one figure
 #   python generate_figures.py --data-dir . --out-dir .
-#   python generate_figures.py --start-year 1973     # window for Fig 4
+#   python generate_figures.py --start-year 1973     # window for Fig 3
 # A figure whose input CSV is absent is skipped with a clear message, so the
 # script is safe to run at any point in the reproduction pipeline.
 #
@@ -74,7 +94,7 @@ M_STYLE = {
 }
 
 # Two-way accent palette used where a figure contrasts exactly two series
-# (Fig. 4's fitted step vs. raw data; Fig. 5's LB vs. MP estimator).
+# (Fig. 3's fitted step vs. raw data; Fig. S2's LB vs. MP estimator).
 ACCENT_A, ACCENT_B = "#0072B2", "#D55E00"    # blue, vermillion
 
 plt.rcParams.update({
@@ -96,7 +116,7 @@ def _read_csv(path):
 
 
 # =============================================================================
-# Figure 1 -- limiting null law of MZ_t across m
+# Figure S1 -- limiting null law of MZ_t across m
 #   panels: (a) density at T=300, (b) rejection-tail ECDF at T=300,
 #           (c) density at T=60.  Data: limiting_density.csv [panel,T,m,x,y].
 # =============================================================================
@@ -147,7 +167,10 @@ def fig_limiting_density(data_dir, out_path):
 
 
 # =============================================================================
-# Figure 2 -- the finite-sample surface c-bar(m,T)
+# LEGACY -- the finite-sample surface c-bar(m,T)
+# Superseded as a manuscript figure by materiality_figure.py's Figure_2.pdf;
+# kept here only so the surface plot itself stays regenerable from
+# cbar_surface.csv. Output goes to legacy_figures/, not the main figure set.
 #   (a) c-bar vs 1/T by m; (b) slope a(m) of the 1/T fit vs m+1.
 #   Data: cbar_surface.csv (aggregated over lambda configs, const method).
 # =============================================================================
@@ -240,7 +263,10 @@ def fig_cbar_surface(data_dir, out_path):
 
 
 # =============================================================================
-# Figure 3 -- power of MZ_t under three c-bar choices
+# LEGACY -- power of MZ_t under three c-bar choices
+# Superseded as a manuscript figure by overdetrend_power.py's Figure_1.pdf;
+# kept here only so the power-comparison plot itself stays regenerable from
+# power_comparison.csv. Output goes to legacy_figures/, not the main figure set.
 #   Data: power_comparison.csv [spec, cbar, cv5, alpha, c_alt, c, power].
 # =============================================================================
 def fig_power(data_dir, out_path):
@@ -295,7 +321,7 @@ def fig_power(data_dir, out_path):
 
 
 # =============================================================================
-# Figure 4 -- the eight real exchange rates with the H1 step deterministic
+# Figure 3 -- the eight real exchange rates with the H1 step deterministic
 #   Data: ppp_panel.csv (currency, year, q) + exog_dates.csv.
 # =============================================================================
 def _build_Z(years, break_years):
@@ -344,7 +370,7 @@ def fig_rer_series(data_dir, out_path, start_year):
 
 
 # =============================================================================
-# Figure 5 -- forest plot of median-unbiased half-life confidence intervals
+# Figure S2 -- forest plot of median-unbiased half-life confidence intervals
 #   MP (constant mean, recursive) vs LB (level breaks, wild bootstrap).
 #   Data: hl_results.csv + hl_results_wild.csv.
 # =============================================================================
@@ -422,12 +448,16 @@ def fig_hl_forest(data_dir, out_path, xmax=80.0):
 
 # =============================================================================
 # File names follow Wiley's convention: the word "Figure" + the number only.
+# Figure_1.pdf and Figure_2.pdf are NOT listed here -- see the header note;
+# they come from overdetrend_power.py and materiality_figure.py directly.
 FIGURES = {
-    "fig1": ("Figure_1.pdf", lambda d, o, a: fig_limiting_density(d, o)),
-    "fig2": ("Figure_2.pdf", lambda d, o, a: fig_cbar_surface(d, o)),
-    "fig3": ("Figure_3.pdf", lambda d, o, a: fig_power(d, o)),
-    "fig4": ("Figure_4.pdf", lambda d, o, a: fig_rer_series(d, o, a.start_year)),
-    "fig5": ("Figure_5.pdf", lambda d, o, a: fig_hl_forest(d, o)),
+    "fig3": ("Figure_3.pdf", lambda d, o, a: fig_rer_series(d, o, a.start_year)),
+    "figS1": ("Figure_S1.pdf", lambda d, o, a: fig_limiting_density(d, o)),
+    "figS2": ("Figure_S2.pdf", lambda d, o, a: fig_hl_forest(d, o)),
+    "legacy-cbarsurface": (os.path.join("legacy_figures", "Figure_legacy_cbar_surface.pdf"),
+                          lambda d, o, a: fig_cbar_surface(d, o)),
+    "legacy-power": (os.path.join("legacy_figures", "Figure_legacy_power_comparison.pdf"),
+                     lambda d, o, a: fig_power(d, o)),
 }
 
 
@@ -439,7 +469,7 @@ def main():
     ap.add_argument("--data-dir", default=".", help="directory with the input CSVs")
     ap.add_argument("--out-dir", default=".", help="directory for the figure PDFs")
     ap.add_argument("--start-year", type=int, default=1973,
-                    help="first year of the estimation window for Figure 4")
+                    help="first year of the estimation window for Figure 3")
     args = ap.parse_args()
     os.makedirs(args.out_dir, exist_ok=True)
 
@@ -448,6 +478,7 @@ def main():
     for key in keys:
         name, fn = FIGURES[key]
         out_path = os.path.join(args.out_dir, name)
+        os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
         try:
             fn(args.data_dir, out_path, args)
             print(f"[{key}] wrote {out_path}")

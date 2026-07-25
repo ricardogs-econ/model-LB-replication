@@ -5,37 +5,125 @@ follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [semantic](https://semver.org/). Version and archival DOIs are recorded in
 `CITATION.cff`.
 
-## [1.2.1] — 2026-07-18
+## [1.3.0] — 2026-07-25
 
-Publication-quality figure pass and expanded documentation. No numerical
-routine, seed, artifact, or table value changed; this release only affects
-how the five figures render and how the package is documented. Archived on
-Zenodo (version DOI `10.5281/zenodo.21434126`).
+Adds the six scripts behind the supplement's §S2 numerics and the PPP
+size/power materiality figures (previously developed outside the package),
+brings them to the package's English-language and quality bar, and resolves
+the root cause of `ppp_two_axis_columns.py --validate`'s AR-order mismatch
+against the published Table `tab:ppp`. Figures are renamed to match what
+LaTeX actually numbers them.
+
+### Added
+- `ppp_two_axis_columns.py`: §6 two-axis decomposition of Table `tab:ppp`'s
+  column (III) — isolates the SIZE axis (critical value) from the
+  DETRENDING/POWER axis (`c̄`) by adding column (N), `c̄=-7` paired with a
+  finite-sample cv. Self-contained (no import from the rest of the package);
+  reads `ppp_ar_diagnostic.csv` as a data input by default (see Fixed, below).
+- `modulus_numerics.py` → `modulus_table.csv`, `modulus_table_T52.csv`,
+  `modulus_table_small.csv`: the empirical modulus `M_T(h)` of Theorem S2.1's
+  observable implication, at `T ∈ {30,45,52,60,150,300}` (52 = the panel's
+  exact span). Supplement §S2.
+- `overdetrend_power.py` → `Figure_1.pdf`: size-corrected power loss from
+  over-detrending at a fixed `c̄=-7` versus the finite-sample `c̄*(m,T)`, self-
+  contained Monte Carlo + plot (under a minute; no CSV intermediate — see
+  `DEPENDENCY_GRAPH.md` for why this and Fig 2 are the two exceptions to the
+  package's compute/plot split).
+- `materiality_figure.py` → `Figure_2.pdf`: empirical size of the `c̄=-7` +
+  asymptotic-cv recipe versus `T`, for `m=0,1,2` — the over-rejection the
+  finite-sample surface corrects.
+- `materiality_c7_vs_surface.py`: shared detrending/statistic core imported
+  by both figure scripts above (standalone re-implementation, deliberately
+  not sharing code with `mlb_core.py`).
+- `assumption1_numerics.py`: numerical support for Theorem S2.1 (formerly
+  Assumption 1); cross-checked against `modulus_numerics.py --selftest`.
 
 ### Changed
-- `generate_figures.py`: the five figures switch from grayscale to the
-  **Okabe–Ito (2008) colorblind-safe palette** (line-style redundancy kept, so
-  each series still reads when desaturated, under color-vision deficiency, or
-  in a black-and-white photocopy). Canvas sizes are matched to the
-  manuscript's actual print width instead of an on-screen size later crushed
-  by `\includegraphics` — the crushing is what made in-figure text and markers
-  render below their nominal point size on the page. Fonts are embedded as
-  CID TrueType (`pdf.fonttype = 42`), not Type-3 bitmaps. Figure 4 moves to a
-  2×4 grid (matching the print aspect ratio) and Figure 5's legend moves below
-  the axis so it no longer covers the bottom currency's lines and "collapse"
-  label. Output files follow the **Wiley convention** — `Figure_1.pdf` …
-  `Figure_5.pdf` (previously `cbar_surface.pdf`, `fig_power.pdf`, etc.).
-- `.gitignore`, `size_power_cbar_comparison.py`, and the `README` exhibit map
-  updated to the new figure file names.
+- **Figures renamed to match what LaTeX actually numbers them.** Filenames
+  previously carried the *old* pipeline's numbering or a descriptive name that
+  did not match the manuscript's rendered figure number (`Figure_4.pdf` was
+  rendered as "Figure 3"; `Figure_1.pdf`/`Figure_5.pdf` in the supplement were
+  rendered "Figure S1"/"Figure S2"). Now: main text `Figure_1.pdf`–
+  `Figure_3.pdf`, supplement `Figure_S1.pdf`/`Figure_S2.pdf` (the `S` prefix
+  matches `\renewcommand{\thefigure}{S\arabic{figure}}` in the supplement's
+  preamble). `generate_figures.py`'s `FIGURES` registry, CLI `--only` keys,
+  and header docstring updated to match; see "Figures" in `README.md`.
+- Two figures superseding the old `Figure_2.pdf`/`Figure_3.pdf` (the `c̄(m,T)`
+  surface and the power-curve comparison, neither cited by the current
+  manuscript) are archived to `legacy_figures/` rather than deleted, so the
+  underlying diagnostics stay regenerable from `cbar_surface.csv` /
+  `power_comparison.csv` via `generate_figures.py --only legacy-cbarsurface` /
+  `--only legacy-power`.
+- `overdetrend_power.py`: added the plotting code that actually produces
+  `Figure_1.pdf` (previously the script printed its table only — the PDF
+  shipped in earlier drafts could not be regenerated from the script as
+  written). Matches the manuscript figure's title, axis labels, legend, and
+  color scheme.
+- `materiality_figure.py`: fixed a LaTeX-escaping typo in the y-axis label
+  (`(\%)` rendered a literal backslash outside math mode; `matplotlib`'s
+  default text renderer is not a full LaTeX engine, so `\%` outside `$...$`
+  is not consumed the way it would be under `text.usetex`). Output renamed
+  `Figure_size.pdf` → `Figure_2.pdf`; unused `build_Z`/`Dmat` imports dropped;
+  `--nrep`/`--out`/`--no-figure` CLI flags added for parity with
+  `overdetrend_power.py`; a `round()` on a Monte Carlo size estimate now casts
+  to `float` first (NumPy ≥ 2.0 otherwise prints `np.float64(...)` in the log).
+- `ppp_two_axis_columns.py`, `modulus_numerics.py`: translated in full to
+  US English (module docstrings, in-line comments, CLI help, log/print/error
+  text). `ppp_two_axis_columns.py` was written almost entirely in Portuguese;
+  `modulus_numerics.py` was written entirely in Portuguese. No logic, seed, or
+  numeric constant changed — both `--selftest` suites and a `--validate` dry
+  run were re-checked against the pre-translation behavior after the change.
+### Fixed
+- `ppp_two_axis_columns.py`: fixed a real bug in the BIC lag search that
+  became `select_p_by_bic` below. Candidate AR orders `p = 0..pmax` were
+  compared on samples of *different length* (the row window shrank with
+  `p`), which is not a valid BIC comparison and could select an order outside
+  the tabulated calibration surface `CBAR_STAR_BY_P` — this crashed
+  `--validate` on GBP (`p=3` selected, surface only tabulates `{0,1,2}`).
+  Fixed by fixing the row window at `pmax` for every candidate, mirroring the
+  common-sample discipline `_adf_style_design` already uses for the MAIC lag
+  search. This closed the crash but, on its own, did not close the
+  discrepancy against the published `p` — see the next entry.
+- `ppp_two_axis_columns.py --validate`: root-caused and fixed the AR-order
+  mismatch against the published Table `tab:ppp` (previously open as a
+  "Known issue" in this file). The published `p` is `ppp_ar_diagnostic.csv`'s
+  `k_bic_cq` column, produced by `select_ar_order.py` — an ADF-style
+  regression that KEEPS the level term (`du_t = (α−1)u_{t-1} + Σc_j du_{t-j}
+  + e_t`, `kmax=10`) and is also what `boot_ppp_cbar.py` reads for its own
+  `p_hat` (line ~408). `ppp_two_axis_columns.py`'s own BIC search fits a
+  DIFFERENT model — a pure AR(p) on the first-differenced residual, NO level
+  term, `PMAX_BIC=6` — a different order-selection question, and the two
+  need not agree (empirically, across the eight currencies, they now agree
+  on 0 of 8 after the bug fix above, since that fix only made the
+  *comparison* valid, not the *specification* the same). `ppp_two_axis_
+  columns.py` is refactored to separate order **selection** from coefficient
+  **fitting** (`select_p_by_bic` / `fit_ar_at_order`, composed as
+  `fit_short_run`), and by default now reads `p` from `ppp_ar_diagnostic.csv`
+  (new `--ar-diagnostic` flag, default path `ppp_ar_diagnostic.csv`) rather
+  than recomputing it — matching the article and `boot_ppp_cbar.py`.
+  `run_currency` now takes the fitted `ShortRun` object from its caller
+  instead of recomputing it internally, so the `c̄*(p)` lookup and the
+  null-DGP simulation can never see two different `p`'s for the same
+  currency. `--recompute-p` restores the old, independent-BIC behavior as an
+  explicit diagnostic mode (prints both values and flags disagreement;
+  expected to disagree, per the above). With the default behavior,
+  `--validate` now reproduces the published `p` for 8 of 8 currencies
+  (previously 0 of 8), and the deterministic statistics `MZt (II)`/
+  `MZt (III)` agree with the published table to within `TOL_STAT` for 7 of 8
+  currencies (CHF differs by ≈0.03).
 
-### Added (documentation)
-- `README.md`: a **Monte Carlo design** section documenting the full tangency
-  search (grid, `R_cv = 10,000` / `R_pow = 5,000`, interpolated 0.50 crossing
-  with delta-method SE, the MAIC-at-`T=30` fallback and its 23 flagged cells),
-  the `m = 0` seed-averaging over `K = 20` independent streams, the extension
-  grid, and the two long-run-variance estimators. An **integrity-check**
-  subsection on the θ-invariance selftest (confirmed to ten significant
-  digits). Links to the article preprints (SSRN, MPRA no. 130117).
+### Known issue
+- `ppp_two_axis_columns.py --validate`'s critical value, `cv (III)` — the
+  5% quantile of the simulated null, the one genuinely Monte Carlo quantity
+  in the comparison — is systematically **more negative** than the published
+  value for all 8 currencies (≈ −0.05 to −0.24), confirmed at `--nrep 15000`
+  (simulation SE ≈ 0.01, an order of magnitude below the gap) to not be
+  Monte Carlo noise. The AR **order** is no longer the issue (see Fixed,
+  above); the AR(p) **coefficients** `fit_ar_at_order` fits (a plain AR(p) on
+  the differenced residual, no level term) may not match whatever the
+  production pipeline used to calibrate the surface behind `cv(III)`. Root
+  cause not yet identified. **Column (N) should not be added to `tab:ppp`
+  until this reconciles.**
 
 ## [1.2.0] — 2026-07-17
 

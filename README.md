@@ -102,50 +102,10 @@ python run_model_lb.py --csv myseries.csv --col rer --date-col year \
 |---|---|
 | `robustness.py` | §5 experiments: LRV-estimator choice, AR(1) size/power, recalibration, trimming, cross-validation. |
 | `size_power_cbar_comparison.py` | §5 power table (`tab_power.tex`) and the curve data (`power_comparison.csv`) behind the **legacy** power-comparison figure (superseded by `overdetrend_power.py`; see "Figures" below). |
-| `boot_ppp_cbar.py` | §6 applied calibration and the per-currency empirical block (Tables 7–8). See the nuisance note below. |
+| `boot_ppp_cbar.py` | §6 applied calibration and the per-currency empirical block (Tables 7–8). AR(p) nuisance controlled by `--pac1` / `--common-nuisance` / `--bp` / `--seed-base` (see the script header and `MC_vs_BOOTSTRAP.md`). |
 | `hl_median_unbiased.py` | §6 median-unbiased (Andrews–Chen) half-lives with grid-t / wild bootstrap CIs (Table 9); writes the Figure S2 forest-plot data. |
 | `ppp_sweep_bis.py` | Exhaustive BIS-universe admissibility sweep (the funnel / gate table). |
-| `ppp_two_axis_columns.py` | §6 two-axis decomposition of Table `tab:ppp`'s column (III): isolates the SIZE axis (critical value) from the DETRENDING/POWER axis (`c̄`) by adding column (N), `c̄=-7` paired with a finite-sample cv. Self-contained (no import from the rest of the package; reads `ppp_ar_diagnostic.csv` as a data input, see below). **`--validate` reproduces the published AR order `p` for 8 of 8 currencies as of v1.3.0; the simulated critical value still does not** — see the note at the end of this table. |
-
-> **Nuisance treatments in `boot_ppp_cbar.py` (v1.2.0).** The **surface** is
-> calibrated under an AR(p) coefficient *family* — first PAC fixed at
-> `--pac1` (default **0.27**, the median first-lag ADF coefficient of the eight
-> residual series; provenance in `pac_diagnostic.py`), higher PACs redrawn per
-> replication. Each currency's **empirical critical value** is *sieve-own* —
-> its fitted ADF φ̂ at its BIC order, held fixed across replications — reported
-> with empirical p-values. `--common-nuisance` reproduces the family design,
-> `--bp` calibrates an exact break configuration, and `--seed-base` quantifies
-> the Monte Carlo resolution of the critical value.
-
-> **`ppp_two_axis_columns.py --validate` still fails, at the critical value
-> only (v1.3.0).** The AR-order mismatch that used to fail this check is
-> **resolved**: the published `p` is `ppp_ar_diagnostic.csv`'s `k_bic_cq`
-> column (produced by `select_ar_order.py`, an ADF-style regression that
-> keeps the level term, `kmax=10`) — the same column `boot_ppp_cbar.py`
-> reads for `p_hat`. `ppp_two_axis_columns.py`'s own internal BIC search
-> (`select_p_by_bic`) fits a *different* model — a pure AR(p) on the
-> first-differenced residual, no level term, `PMAX_BIC=6` — a different
-> order-selection question that need not, and empirically does not, agree
-> with `k_bic_cq`. By default `ppp_two_axis_columns.py` now **reads** `p`
-> from `ppp_ar_diagnostic.csv` (`--ar-diagnostic`, matching the article and
-> `boot_ppp_cbar.py`) instead of recomputing it; `--recompute-p` restores the
-> old independent-BIC behavior as an explicit diagnostic mode. With the
-> default behavior, `--validate` reproduces the published `p` for **8 of 8**
-> currencies (previously 0 of 8 — see `CHANGELOG.md`'s `[1.3.0]` entry for
-> the numbers before the fix), and the deterministic statistics `MZt (II)`/
-> `MZt (III)` agree with the published table for 7 of 8 (CHF differs by
-> ≈0.03).
->
-> What is **still open**: the simulated critical value `cv (III)` — the one
-> genuinely Monte Carlo quantity in the comparison — is systematically more
-> negative than published for all 8 currencies (≈ −0.05 to −0.24), confirmed
-> at `--nrep 15000` (simulation SE ≈ 0.01) not to be Monte Carlo noise. The
-> AR *order* is no longer the issue; the AR(p) *coefficients*
-> `fit_ar_at_order` fits (plain AR(p) on the differenced residual) may not
-> match whatever the production pipeline used to calibrate the surface
-> behind `cv(III)`. Root cause not yet identified. **Do not add column (N) to
-> `tab:ppp` until this reconciles** (this is the B-4 item in the project's
-> internal tracking).
+| `ppp_two_axis_columns.py` | §6 two-axis decomposition of Table `tab:ppp`'s column (III): isolates the SIZE axis (critical value) from the DETRENDING/POWER axis (`c̄`) by adding column (N), `c̄=-7` paired with a finite-sample cv. Self-contained (no import from the rest of the package); reads `ppp_ar_diagnostic.csv` as a data input. `--validate` checks it against the published table; `--recompute-p` selects the AR order independently as a diagnostic. |
 
 ### Figures
 

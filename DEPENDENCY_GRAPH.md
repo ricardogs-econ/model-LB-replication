@@ -95,6 +95,7 @@ ppp_two_axis_columns.py  →  imports numpy (+ pandas for --data) ONLY. Also
 | `boot_out/calib/surface_ppp_boot.csv` | `boot_ppp_cbar.py --full --empirical` | Table `pppsurface` | yes (bundled) |
 | `boot_out/empirical/ppp_empirical.csv` | (same run) | Table `ppp` | yes (bundled) |
 | `modulus_table.csv`, `modulus_table_T52.csv`, `modulus_table_small.csv` | `modulus_numerics.py` | Supplement §S2, Theorem S2.1's observable implication | yes (bundled) |
+| `ppp_two_axis_results.csv`, `tab_ppp_three_columns.tex` | `ppp_two_axis_columns.py --validate --nrep 50000` | Table `tab:ppp` column (N); the validation record against the published column (III) | yes (bundled) |
 
 ## Import edges (verified)
 

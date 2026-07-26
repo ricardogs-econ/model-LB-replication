@@ -68,12 +68,33 @@ H3. Under H0 the process is y_t = Z_t'theta + u_t, u_t = u_{t-1} + v_t, with
     and there is no reason for their argmin to coincide; empirically it does
     not, for most of the eight currencies. By DEFAULT this file therefore
     reads p from `ppp_ar_diagnostic.csv` (matching the article and
-    `boot_ppp_cbar.py`) and uses `select_p_by_bic`'s AR(p) MACHINERY only to
-    FIT phi/sigma AT that externally supplied order -- order selection and
-    coefficient fitting are separate steps (`fit_ar_at_order`). Pass
-    `--recompute-p` to instead select p independently, in which case the
-    file prints both values and flags any disagreement; this is a robustness
-    check on the AR(p) fit, not a replication of the published p.
+    `boot_ppp_cbar.py`). Pass `--recompute-p` to instead select p
+    independently (via `select_p_by_bic`), in which case the file prints
+    both values and flags any disagreement; this is a robustness check on
+    the AR(p) fit, not a replication of the published p.
+
+    H3bis (v1.3.0, second half of the fix): p alone does not pin down the
+    null DGP -- the AR(p) COEFFICIENTS phi also matter, and the same
+    ADF-vs-no-level split recurs one level down. `boot_ppp_cbar.py`'s
+    production calibration (`empirical_block`, sieve-own design) fits phi
+    via `estimate_phi_adf`, the SAME ADF-with-level regression that selected
+    p, evaluated at the given order:
+        du_t = b0 + b*u_{t-1} + sum_{j=1..p} gamma_j du_{t-j} + e_t,
+        phi_hat = (gamma_1, ..., gamma_p).
+    `fit_ar_at_order` (this file's own machinery, kept for `--recompute-p`
+    and the self-tests) instead fits a pure AR(p) on the first difference,
+    with NO level term -- structurally the same distinction as the p-source
+    split above, and empirically the two phi estimates differ meaningfully
+    for all eight currencies (see `_test_config_faithful_phi`). This is what
+    produced the "Known issue" flagged when the p-source fix alone shipped:
+    with the right p but the wrong phi, cv(III) was still systematically
+    off. By DEFAULT this file now fits phi via `fit_ar_config_faithful`
+    (`estimate_phi_adf` ported verbatim), closing most of that gap -- see
+    CHANGELOG for the quantitative before/after. `--recompute-p` keeps BOTH
+    order selection AND coefficient fitting on this file's own,
+    independent, no-level machinery (`fit_short_run`), since that flag's
+    purpose is a check using no data or design borrowed from
+    `boot_ppp_cbar.py`.
 H4. Long-run variance via s2_AR (Perron-Ng) with lag order by MAIC
     (Ng-Perron 2001), the auxiliary regression run on the OLS-demeaned
     series (Perron-Qu 2007 modification), kmax = 12. Identical to the
@@ -81,6 +102,23 @@ H4. Long-run variance via s2_AR (Perron-Ng) with lag order by MAIC
 H5. Initialization u_0 = 0 (ERS convention). No burn-in is used on the I(1)
     component -- that would alter the law under H0. Burn-in applies only to
     the stationary AR(p) recursion of v_t.
+H6. Finite-sample normalization conventions IDENTICAL to the kernel that
+    produced the published tables (`mlb_core.mstats_nb`/`s2ar_maic_nb`), not
+    merely asymptotically equivalent to them. Two conventions matter at
+    T = 52 even though both vanish at O(1/T):
+    (i)  the MAIC/sigma2_k divisor is the effective regression row count
+         n_eff = T - kmax - 1 (the kernel's `nef`), NOT T - kmax;
+    (ii) the M-statistics normalize by B = T - 1 (the number of lagged
+         terms in sum ytil_{t-1}^2, the kernel's `bt`), NOT by T.
+    Before this fix the file used T - kmax and T respectively. The two
+    deviations pull MZt in OPPOSITE directions and nearly cancelled for 7
+    of 8 currencies (residual ~0.001-0.01), which is why the bug survived
+    both earlier fixes: only CHF (khat = 2, large positive statistic)
+    breached TOL_STAT, and the same imperfect cancellation was the residual
+    uniformly-negative ~0.01-0.04 bias in the simulated cv (III), since
+    `null_distribution` computes the statistic through the same two
+    functions. See `maic_lag_and_lrv` and `m_statistics` for the pointwise
+    correspondence with the kernel, verified term by term.
 
 Mandatory validation before any new result
 --------------------------------------------
@@ -91,8 +129,25 @@ a pipeline that fails to reproduce the published values does not license any
 inference about the new column. `--validate` requires `ppp_ar_diagnostic.csv`
 (default path, override with `--ar-diagnostic`) alongside `--data`, since p
 is read from it by default (see H3 above); `--validate --recompute-p` is a
-strictly harder, and currently failing, bar -- it additionally requires the
-independent AR(p) search to land on the published p, which it does not.
+strictly harder bar -- it additionally requires the independent AR(p) search
+(order AND coefficients, both on this file's own no-level machinery) to land
+on the published p and cv, which it does not (expected, see H3/H3bis).
+
+Status after the three fixes (H3: p source; H3bis: phi design; H6:
+normalization conventions):
+- The deterministic statistics MZt (II)/(III) now agree with the published
+  table for ALL 16 values (8 currencies x 2 columns) to within pure
+  2-decimal rounding (worst |diff| = 0.0046 < TOL_STAT = 0.02). The CHF
+  discrepancy is resolved: it was the H6 normalization pair, whose
+  near-cancellation hid the bug on the other 7 currencies. The new
+  `_test_kernel_equivalence` self-test locks the statistic to
+  `mlb_core.mstats_nb` at 1e-8 whenever the kernel is importable.
+- `--validate --nrep 50000` post-H6: **[OK] reproduction accepted** (run to
+  completion on the author's machine, 2026-07-26). All 32 comparisons pass:
+  16 deterministic MZt values to 2-decimal rounding, cv (III) with |diff|
+  in [0.001, 0.022] (vs TOL_CV = 0.04), pval (III) within 0.008. The
+  post-H6 cv gaps landed inside the CRN-predicted window [-0.025, +0.007].
+  The validation gate is green: column (N) is licensed (B-4 unblocked).
 
 Usage
 -----
@@ -292,9 +347,21 @@ def maic_lag_and_lrv(ytil_ols: np.ndarray, kmax: int = KMAX
                      ) -> Tuple[int, float]:
     """Lag selection by MAIC and the long-run variance s2_AR.
 
-    MAIC(k) = ln(sigma2_k) + 2 (tau_T(k) + k) / (T - kmax),
-    tau_T(k)  = sigma2_k^{-1} b0hat^2 sum_{t=kmax+1}^{T} ytil_{t-1}^2,
-    s2_AR     = sigma2_ehat / (1 - sum_j bjhat)^2.
+    MAIC(k) = ln(sigma2_k) + 2 (tau_T(k) + k) / n_eff,
+    tau_T(k)  = sigma2_k^{-1} b0hat^2 sum_t ytil_{t-1}^2  (common sample),
+    s2_AR     = sigma2_ehat / (1 - sum_j bjhat)^2,
+    n_eff     = T - kmax - 1,
+
+    where n_eff is the EFFECTIVE REGRESSION SAMPLE: dytil has T-1
+    observations and the first kmax rows are lost to the common-sample lag
+    window, so every candidate regression has exactly T-1-kmax rows, and
+    both sigma2_k and the MAIC penalty are normalized by that row count.
+    This matches `mlb_core.s2ar_maic_nb` (`nef = nt - kmax - 1`), the kernel
+    that produced the published tables, EXACTLY. Until the H6 fix (see the
+    module docstring) this function divided by T - kmax (one more than the
+    row count) -- asymptotically irrelevant, O(1/T) in finite samples, but
+    at T = 52 it is one of the two conventions whose imperfect cancellation
+    produced the CHF MZt discrepancy flagged in `--validate`.
 
     Follows Ng-Perron (2001) with the Perron-Qu (2007) modification: the
     auxiliary regression is run on the OLS-demeaned series, although the
@@ -304,7 +371,7 @@ def maic_lag_and_lrv(ytil_ols: np.ndarray, kmax: int = KMAX
     -------
     (khat, s2_AR)
     """
-    n_eff_den = len(ytil_ols) - kmax
+    n_eff_den = len(ytil_ols) - kmax - 1     # regression rows; kernel's nef
     if n_eff_den <= kmax + 2:
         raise ValueError(f"sample too short for kmax={kmax} (T={len(ytil_ols)})")
 
@@ -339,23 +406,37 @@ def maic_lag_and_lrv(ytil_ols: np.ndarray, kmax: int = KMAX
 def m_statistics(ytil: np.ndarray, s2: float, cbar: float) -> Dict[str, float]:
     """M-class statistics on the GLS-detrended series.
 
-    MZ_alpha = (T^{-1} ytil_T^2 - s2) / (2 T^{-2} sum ytil_{t-1}^2)
-    MSB      = (s2^{-1} T^{-2} sum ytil_{t-1}^2)^{1/2}
+    With B = T - 1 (the number of LAGGED observations, i.e. of terms in
+    sum ytil_{t-1}^2):
+
+    MZ_alpha = (B^{-1} ytil_T^2 - s2) / (2 B^{-2} sum ytil_{t-1}^2)
+    MSB      = (s2^{-1} B^{-2} sum ytil_{t-1}^2)^{1/2}
     MZ_t     = MZ_alpha * MSB
-    MPT      = (cbar^2 T^{-2} sum ytil_{t-1}^2 - cbar T^{-1} ytil_T^2) / s2
+    MPT      = (cbar^2 B^{-2} sum ytil_{t-1}^2 - cbar T^{-1} ytil_T^2) / s2
                (the DEMEANED form of Ng-Perron eq. 9, p = 0: Model LB has no
                 trend, so the (1 - cbar) form of eq. 10 is not used)
+
+    The B = T - 1 normalization matches `mlb_core.mstats_nb` (`bt = nt - 1`),
+    the kernel that produced the published tables, EXACTLY: the sample sums
+    run over the T-1 lagged terms, and the kernel normalizes by that count,
+    not by T. Until the H6 fix (see the module docstring) this function
+    normalized by T -- asymptotically irrelevant, O(1/T) in finite samples,
+    but at T = 52 it is the second of the two conventions whose imperfect
+    cancellation produced the CHF MZt discrepancy flagged in `--validate`.
+    (MPT keeps the kernel's own mixed convention: `mlb_core` divides the
+    ytil_T^2 term of MPT by nt, not bt -- replicated as-is, faithfully.)
     """
     n_obs = len(ytil)
-    ssq = float(np.sum(ytil[:-1] ** 2)) / n_obs ** 2      # T^{-2} sum ytil_{t-1}^2
-    endterm = float(ytil[-1] ** 2) / n_obs                # T^{-1} ytil_T^2
+    bt = n_obs - 1                                        # lagged-term count
+    ssq = float(np.sum(ytil[:-1] ** 2)) / bt ** 2         # B^{-2} sum ytil_{t-1}^2
+    endterm = float(ytil[-1] ** 2) / bt                   # B^{-1} ytil_T^2
     mza = (endterm - s2) / (2.0 * ssq)
     msb = np.sqrt(ssq / s2)
     return {
         "MZa": mza,
         "MSB": msb,
         "MZt": mza * msb,
-        "MPT": (cbar ** 2 * ssq - cbar * endterm) / s2,
+        "MPT": (cbar ** 2 * ssq - cbar * float(ytil[-1] ** 2) / n_obs) / s2,
     }
 
 
@@ -444,6 +525,91 @@ def select_p_by_bic(y: np.ndarray, Z: np.ndarray, pmax: int = PMAX_BIC) -> int:
         if bic < best_bic:
             best_bic, best_p = bic, p
     return best_p
+
+
+def estimate_phi_adf(u: np.ndarray, k: int) -> Tuple[np.ndarray, np.ndarray]:
+    """Sieve estimate of the AR(k) nuisance from the ADF-STYLE regression
+    that KEEPS the level term,
+
+        Delta u_t = b0 + b*u_{t-1} + sum_{j=1..k} gamma_j Delta u_{t-j} + e_t,
+
+    phi_hat = (gamma_1, ..., gamma_k) = b[2:2+k].
+
+    THIS -- not `fit_ar_at_order`'s AR(p)-on-differences design -- is the
+    regression `boot_ppp_cbar.py::estimate_phi_adf` uses to fit the sieve
+    nuisance behind the published, config-faithful critical value cv(III)
+    (`empirical_block`'s sieve-own design, v1.2.0: "the currency's own
+    estimated AR(p_hat) short-run dynamics from the ADF regression at the
+    BIC order"). Ported here verbatim (v1.3.1) so this file's null-DGP
+    simulation matches the production calibration exactly -- see H3bis in
+    the module docstring and `fit_ar_config_faithful` below, which wires
+    this into a `ShortRun`.
+
+    Conditioning on u_{t-1} is what frees the short-run coefficients from
+    the over-differencing MA that depresses the PACF of Delta u under
+    stationarity; it is the SAME regression `select_ar_order.py::bic_select`
+    uses for order selection (hence "config-faithful": order AND coefficients
+    both come from the level-inclusive design).
+
+    Returns (phi, resid): `resid` is the full ADF-regression residual e_t
+    (length T-1-k), used both to set the innovation scale and to seed the
+    resample/wild bootstrap schemes. Stationarity of phi is enforced
+    strictly via the companion-matrix spectral radius, matching the
+    production script's refusal criterion (there a hard `SystemExit`; here a
+    `ValueError`, since this is a library function, not a CLI entry point).
+    """
+    if k == 0:
+        return np.zeros(0), np.diff(u)
+    du = np.diff(u)
+    yv = du[k:]
+    X = [np.ones(len(yv)), u[k:-1]]
+    for j in range(1, k + 1):
+        X.append(du[k - j:-j])
+    Xm = np.column_stack(X)
+    b, *_ = np.linalg.lstsq(Xm, yv, rcond=None)
+    resid = yv - Xm @ b
+    phi = np.asarray(b[2:2 + k], float)
+    if k == 1:
+        ok = abs(phi[0]) < 1.0
+    else:
+        comp = np.zeros((k, k))
+        comp[0, :] = phi
+        comp[1:, :-1] = np.eye(k - 1)
+        ok = float(np.max(np.abs(np.linalg.eigvals(comp)))) < 1.0
+    if not ok:
+        raise ValueError(f"estimated AR({k}) nuisance non-stationary "
+                         f"(phi={phi}); refusing to simulate the null")
+    return phi, resid
+
+
+def fit_ar_config_faithful(y: np.ndarray, Z: np.ndarray, p: int) -> ShortRun:
+    """Fit the null-DGP AR(p) nuisance the way the published cv(III) was
+    actually calibrated (v1.3.1): `estimate_phi_adf` on the LEVEL OLS
+    residual, `boot_ppp_cbar.py`'s sieve-own default -- NOT
+    `fit_ar_at_order`'s AR(p)-on-differences design.
+
+    `p` is still sourced externally (by default, `ppp_ar_diagnostic.csv`'s
+    `k_bic_cq`, via `main()`); this function only fits phi/sigma AT that
+    order, mirroring `fit_ar_at_order`'s separation of order selection from
+    coefficient fitting. Unlike `fit_ar_at_order`, there is no `pmax`
+    common-sample trim here: `estimate_phi_adf` is called once, at a single
+    externally given order, not compared across candidate orders, exactly as
+    `boot_ppp_cbar.py::empirical_block` calls it -- trimming to `pmax` here
+    would depart from the production design being replicated.
+    """
+    if p < 0:
+        raise ValueError(f"AR order must be >= 0, got p={p}")
+    e = ols_detrend(y, Z)
+    phi, resid = estimate_phi_adf(e, p)
+    n_eff = len(resid)
+    if n_eff <= p + 2:
+        raise ValueError(f"sample too short for p={p} (T={len(y)})")
+    sigma2 = float(resid @ resid) / n_eff
+    if sigma2 <= 0 or not np.isfinite(sigma2):
+        raise RuntimeError(f"config-faithful AR fit failed at p={p} (sigma2={sigma2})")
+    sigma = float(np.sqrt(sigma2))
+    return ShortRun(p=p, phi=phi, sigma=sigma,
+                    resid=np.asarray(resid / sigma, dtype=float))
 
 
 def fit_ar_at_order(y: np.ndarray, Z: np.ndarray, p: int, pmax: int = PMAX_BIC) -> ShortRun:
@@ -910,10 +1076,91 @@ def _test_order_selection_fit_split() -> None:
     assert alt.p == p_other, "fit_ar_at_order did not honor the requested order"
 
 
+def _test_config_faithful_phi() -> None:
+    """H3bis (v1.3.0 fix, second half): `fit_ar_config_faithful`'s
+    ADF-with-level design (`estimate_phi_adf`) must (i) recover a known
+    AR(1) nuisance from a long simulated series, and (ii) generically
+    DIFFER from `fit_ar_at_order`'s AR(p)-on-differences design at the SAME
+    order -- the two are different regressions, not two implementations of
+    the same one; this disagreement is exactly what closed most of the
+    "Known issue" cv(III) gap against the published Table `tab:ppp` (see
+    CHANGELOG). The companion-matrix stationarity guard inside
+    `estimate_phi_adf` is a verbatim port of `boot_ppp_cbar.py`'s and is not
+    separately re-tested here.
+    """
+    # (i) recovery on a long simulated series with a known nuisance
+    rng = np.random.default_rng(7)
+    T = 2000
+    phi_true = 0.5
+    v = np.zeros(T)
+    e = rng.standard_normal(T)
+    for t in range(1, T):
+        v[t] = phi_true * v[t - 1] + e[t]
+    u = np.cumsum(v)                        # u_t = u_{t-1} + v_t, u_0 = 0
+    phi_hat, resid = estimate_phi_adf(u, 1)
+    assert abs(phi_hat[0] - phi_true) < 0.05, (
+        f"estimate_phi_adf did not recover phi={phi_true} at T={T} "
+        f"(got {phi_hat[0]:.4f})")
+    assert len(resid) == T - 2, "residual length mismatch (T - 1 - k, k=1)"
+
+    # (ii) generic disagreement with fit_ar_at_order at the same order, on
+    # an empirical-scale design (short T, level breaks) like the CLI's
+    rng2 = np.random.default_rng(11)
+    T2 = 52
+    Z2 = level_break_design(T2, [25])
+    y2 = np.cumsum(rng2.standard_normal(T2))
+    sr_no_level = fit_ar_at_order(y2, Z2, 1)
+    sr_level = fit_ar_config_faithful(y2, Z2, 1)
+    assert not np.allclose(sr_no_level.phi, sr_level.phi), (
+        "fit_ar_at_order and fit_ar_config_faithful should generically "
+        "disagree (different regressions) -- see H3bis")
+
+    # (iii) p=0 is trivial and identical either way
+    z0 = fit_ar_config_faithful(y2, Z2, 0)
+    assert z0.p == 0 and z0.phi.shape == (0,)
+
+
+def _test_kernel_equivalence() -> None:
+    """H6: if `mlb_core` is importable (it ships in the same package
+    directory), the statistic this file computes must agree with the
+    kernel's `mstats_nb` at machine-level precision on random empirical-
+    scale draws -- same T, same level-break Z, same cbar, same kmax. This
+    is the test that would have caught the T-vs-(T-1) and
+    (T-kmax)-vs-(T-kmax-1) normalization mismatches (the CHF MZt
+    discrepancy) from day one. Skipped, with a visible notice, when
+    `mlb_core` is absent: this file must stay runnable standalone, and the
+    check is a cross-validation against the kernel, not a dependency on it.
+    """
+    try:
+        import mlb_core as _K
+    except ImportError:  # pragma: no cover
+        print("  [skip] _test_kernel_equivalence: mlb_core not importable "
+              "(standalone run) -- the H6 conventions are still enforced by "
+              "code, just not cross-checked here")
+        return
+    rng = np.random.default_rng(17)
+    for trial, (T, breaks) in enumerate([(52, [11]), (52, [11, 18]),
+                                         (60, [20]), (48, [15, 30])]):
+        y = np.cumsum(rng.standard_normal(T)) + 0.3 * rng.standard_normal(T)
+        Z = level_break_design(T, breaks)
+        bp = np.array([b + 1 for b in breaks], dtype=np.int64)  # kernel is 1-based
+        Zk = _K.build_z_nb(T, bp)
+        assert np.array_equal(Z, Zk), f"trial {trial}: Z construction differs"
+        for cbar in (-7.0, -11.1):
+            _, _, mzt_k, _, _, ok = _K.mstats_nb(y, Zk, cbar, 1, KMAX)
+            assert ok > 0.5, f"trial {trial}: kernel flagged a degenerate draw"
+            mzt_here, _, _ = mzt_observed(y, Z, cbar, KMAX)
+            assert abs(mzt_here - mzt_k) < 1e-8, (
+                f"trial {trial}, cbar={cbar}: MZt diverges from the kernel "
+                f"({mzt_here:.10f} vs {mzt_k:.10f}) -- an H6 normalization "
+                f"convention has drifted")
+
+
 def selftest() -> None:
     for fn in (_test_quasi_difference_of_dummy, _test_gram_expansion,
                _test_exact_invariance, _test_asymptotic_cv,
-               _test_order_selection_fit_split):
+               _test_order_selection_fit_split, _test_config_faithful_phi,
+               _test_kernel_equivalence):
         fn()
         print(f"[ok] {fn.__name__}")
     print("\nall self-tests passed")
@@ -978,12 +1225,24 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         # prepare_currency) -- computed ONCE here and passed down, so the
         # cbar*(p) lookup and the null simulation can never see two
         # different p's for the same currency (see run_currency's docstring).
+        #
+        # v1.3.1: the DEFAULT path also fits phi via `fit_ar_config_faithful`
+        # (the ADF-with-level design, `estimate_phi_adf`), not
+        # `fit_ar_at_order` (AR(p)-on-differences, no level term). This is
+        # the second half of the H3/H3bis fix: v1.3.0 closed the p-source
+        # mismatch; phi/sigma still came from the wrong regression, which is
+        # what produced the "Known issue" (cv(III) systematically more
+        # negative than published). `--recompute-p` deliberately keeps BOTH
+        # order selection AND coefficient fitting on this file's own,
+        # independent AR(p)-on-differences machinery (`fit_short_run`) --
+        # that flag's entire point is a check that uses no data or design
+        # borrowed from `boot_ppp_cbar.py`.
         _, yy_probe, Z_probe, _ = prepare_currency(cur, years, q)
         if ar_diag is not None:
             if cur not in ar_diag:
                 ap.error(f"{args.ar_diagnostic}: currency {cur} not found")
             p = ar_diag[cur]
-            sr_probe = fit_ar_at_order(yy_probe, Z_probe, p)
+            sr_probe = fit_ar_config_faithful(yy_probe, Z_probe, p)
         else:
             sr_probe = fit_short_run(yy_probe, Z_probe)
         if sr_probe.p not in CBAR_STAR_BY_P:

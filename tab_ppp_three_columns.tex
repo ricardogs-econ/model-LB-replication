@@ -1,0 +1,43 @@
+\begin{table}[t!]
+\centering
+\caption{$\mathrm{MZ}_t$ for the real exchange rate against the US dollar
+under three calibrations of the Model~LB test, at the exogenous break dates
+of Table~\ref{tab:dates}; each specification's own $5\%$ critical value in
+parentheses (rejection --- small values --- is evidence \emph{for} PPP).
+Column~(N) isolates the two axes: it shares the statistic of column~(II)
+(same $\bar c=-7$) and the critical-value construction of column~(III)
+(finite-sample, at the currency's own configuration), so (II)$\to$(N) is the
+size axis alone and (N)$\to$(III) the detrending axis alone.}
+\label{tab:ppp}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccc rr rr rrr}
+\toprule
+& & & & \multicolumn{2}{c}{(II) asymptotic $\mu$}
+& \multicolumn{2}{c}{(N) $\bar c=-7$, finite-sample cv}
+& \multicolumn{3}{c}{(III) finite-sample pair} \\
+\cmidrule(lr){5-6}\cmidrule(lr){7-8}\cmidrule(lr){9-11}
+Currency & $T$ & $m$ & $p$ & $\mathrm{MZ}_t$ (cv) & PPP? &
+$\mathrm{MZ}_t$ (cv) & $p$-val &
+$\mathrm{MZ}_t$ (cv) & $p$-val & PPP? \\
+\midrule
+AUD & 52 & 1 & 1 & $-0.38\;(-1.98)$ & no & $-0.38\;(-1.96)$ & $0.773$ & $-0.97\;(-2.08)$ & $0.576$ & no \\
+CAD & 52 & 1 & 2 & $-1.89\;(-1.98)$ & no & $-1.89\;(-1.99)$ & $0.063$ & $-2.08\;(-2.09)$ & $0.052$ & no \\
+CHF & 52 & 1 & 1 & $\phantom{-}2.27\;(-1.98)$ & no & $\phantom{-}2.27\;(-2.02)$ & $0.999$ & $\phantom{-}1.68\;(-2.16)$ & $0.999$ & no \\
+GBP & 52 & 2 & 1 & $-0.33\;(-1.98)$ & no & $-0.33\;(-1.98)$ & $0.888$ & $-0.78\;(-2.12)$ & $0.792$ & no \\
+JPY & 52 & 1 & 1 & $\phantom{-}0.17\;(-1.98)$ & no & $\phantom{-}0.17\;(-2.07)$ & $0.915$ & $-0.22\;(-2.21)$ & $0.884$ & no \\
+NOK & 52 & 2 & 2 & $-0.77\;(-1.98)$ & no & $-0.77\;(-2.00)$ & $0.747$ & $-0.99\;(-2.16)$ & $0.730$ & no \\
+NZD & 52 & 1 & 1 & $-0.33\;(-1.98)$ & no & $-0.33\;(-1.92)$ & $0.760$ & $-0.82\;(-2.05)$ & $0.629$ & no \\
+SEK & 52 & 2 & 2 & $-0.95\;(-1.98)$ & no & $-0.95\;(-1.94)$ & $0.601$ & $-1.44\;(-2.10)$ & $0.381$ & no \\
+\bottomrule
+\end{tabular}
+\par\medskip
+\footnotesize $p$ by BIC on the post-break residual; long-run variance by
+MAIC. Column~(N) pairs the theorem's detrending value $\bar c=-7$ with the
+critical value simulated at the currency's own configuration; column~(III)
+pairs $\bar c^{*}(2,52,p)$ of Table~\ref{tab:pppsurface} with the critical
+value simulated at that $\bar c$. Columns (N) and (III) use common random
+numbers, so their difference is attributable to $\bar c$ and not to
+simulation error. Data: BIS bilateral nominal USD rates and World Bank CPI
+(2010$=$100), 1973--2024.
+\end{table}

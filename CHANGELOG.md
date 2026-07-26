@@ -5,6 +5,84 @@ follows [Keep a Changelog](https://keepachangelog.com/); versioning is
 [semantic](https://semver.org/). Version and archival DOIs are recorded in
 `CITATION.cff`.
 
+## [1.3.1] — 2026-07-26
+
+Closes the `[1.3.0]` "Known issue" (`ppp_two_axis_columns.py --validate`'s
+simulated `cv (III)` systematically more negative than published), plus
+release-hygiene cleanup: internal process notes removed from the tracked
+tree, and procedural detail the manuscript's revision 3 now delegates to
+this package folded into `README.md`.
+
+### Fixed
+- `ppp_two_axis_columns.py`: the AR **order** fix in `[1.3.0]` (reading `p`
+  from `ppp_ar_diagnostic.csv`) closed the crash and made `p` match the
+  published table 8/8, but left two further mismatches, both now fixed.
+  - **AR coefficients (phi).** `boot_ppp_cbar.py`'s production calibration
+    fits the sieve nuisance via `estimate_phi_adf`, an ADF-style regression
+    that *keeps* the level term. This file previously fit phi via
+    `fit_ar_at_order` — a plain AR(`p`) on the first-differenced residual,
+    *no* level term — a different regression at the same order, which
+    disagrees with `estimate_phi_adf` for all eight currencies. By default
+    this file now fits phi via `fit_ar_config_faithful` (`estimate_phi_adf`
+    ported verbatim); `--recompute-p` keeps both order selection *and*
+    coefficient fitting on the file's own, independent, no-level machinery,
+    since that flag's purpose is a check that borrows no design from
+    `boot_ppp_cbar.py`.
+  - **Finite-sample normalization conventions.** Two conventions in this
+    file's own statistic computation were only asymptotically equivalent to
+    `mlb_core.mstats_nb`/`s2ar_maic_nb` (the kernel that produced the
+    published tables), not identical to them: the MAIC/`sigma2_k` divisor
+    used `T - kmax` instead of the kernel's effective regression row count
+    `n_eff = T - kmax - 1`, and the `M`-statistics normalized by `T` instead
+    of `B = T - 1` (the count of lagged terms in `sum ytil_{t-1}^2`). Both
+    deviations are `O(1/T)` and nearly cancelled for 7 of 8 currencies
+    (residual ~0.001–0.01) — which is why only CHF (`k_hat = 2`, a large
+    positive statistic) breached `TOL_STAT` under the order-only fix, and
+    why the same near-cancellation was the source of the uniformly-negative
+    `cv (III)` bias the `[1.3.0]` entry flagged as unresolved. New
+    self-tests: `_test_config_faithful_phi` (phi recovery on a simulated
+    AR(1); confirms `fit_ar_config_faithful` and `fit_ar_at_order`
+    generically disagree at the same order) and `_test_kernel_equivalence`
+    (locks the statistic to `mlb_core.mstats_nb` at `1e-8` whenever the
+    kernel is importable — the check that would have caught the
+    normalization mismatch from day one).
+  - **Result.** `--validate --nrep 50000` now returns
+    `[OK] reproduction accepted`: all 32 comparisons pass — 16 deterministic
+    `MZt` values to two-decimal rounding (worst `|diff| = 0.004`), `cv (III)`
+    with `|diff|` in `[0.001, 0.022]` (`TOL_CV = 0.04`), `pval (III)` within
+    `0.008`. **Column (N) is no longer blocked**; `ppp_two_axis_results.csv`
+    and `tab_ppp_three_columns.tex` are the validated run's artifacts,
+    newly bundled.
+
+### Removed
+- `RELEASE_v120_checklist.md`, `RELEASE_v130_checklist.md`: internal
+  release-process notes (Portuguese, narrating the fix's development
+  history under internal hypothesis labels, and — in the v1.3.0 file —
+  exposing the author's absolute local path). They documented a real
+  process but had no place in an archived, citable artifact; the process
+  they describe is now the "Fixed" entries above and in `[1.3.0]`.
+
+### Added (documentation)
+- `README.md`: a new **"Admissible universe: attrition cascade"** section
+  with the full (C1)-(C5) attrition arithmetic (192 → 70 → 30 → 25 → 8),
+  the two operationalizations of (C4), and the three crisis-driven
+  near-misses (Korean won, Thai baht, South African rand) — material the
+  manuscript's revision 3 removed and now points to this package for.
+  New footnote subsections under "Reproducibility & integrity checks":
+  **"Applied nuisance calibration"** (the surface's coefficient-family
+  design vs. the empirical block's sieve-own design, the uninvited `p = 4`
+  cell, the exact-fraction displacement sensitivity), **"Half-life
+  bootstrap schemes"** (grid-`t`, recursive, and wild bootstrap mechanics),
+  **"Table 6 validation gate"** (the `--validate` mechanics and the result
+  above), and **"External reference implementation"** (CKP's GAUSS
+  library). A short addendum to **"Monte Carlo design"** (418 break
+  configurations in total; replication counts for the paper's other Monte
+  Carlo exhibits) and to **"Pesaran CD statistic"** (the dependence-adjusted
+  zero-rejection probability, 0.006 → 0.09-0.10).
+
+No raw data, seed, replication count, or previously-published table value
+changed in this release.
+
 ## [1.3.0] — 2026-07-25
 
 Adds the six scripts behind the supplement's §S2 numerics and the PPP
@@ -123,7 +201,7 @@ LaTeX actually numbers them.
   the differenced residual, no level term) may not match whatever the
   production pipeline used to calibrate the surface behind `cv(III)`. Root
   cause not yet identified. **Column (N) should not be added to `tab:ppp`
-  until this reconciles.**
+  until this reconciles.** *Resolved in `[1.3.1]`.*
 
 ## [1.2.1] — 2026-07-18
 

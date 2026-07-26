@@ -170,6 +170,7 @@ the kernel.
 | `boot_out/empirical/ppp_empirical.csv` | output — per-currency verdicts with p-values (Table 7; sieve-own CVs) |
 | `boot_out/sensitivity/` | output — nuisance / seed / λ-exact sensitivities behind the Table-7 boundary note (see its `README.md`) |
 | `modulus_table.csv`, `modulus_table_T52.csv`, `modulus_table_small.csv` | output — `modulus_numerics.py`'s empirical modulus `M_T(h)`, the observable implication of Theorem S2.1 (full grid; the `T=52` cell; a quick-test subset) |
+| `ppp_two_axis_results.csv`, `tab_ppp_three_columns.tex` | output — `ppp_two_axis_columns.py --validate --nrep 50000`'s validated run: the two-axis decomposition backing column (N) plus the full comparison against the published Table 6 |
 
 Figure PDFs and the `hl_results*.csv` / `power_comparison.csv` /
 `limiting_density.csv` files are **generated on demand** (git-ignored).
@@ -241,6 +242,59 @@ python reconcile_boot.py --boot-out boot_out
 
 `python replicate_section6.py sweep --fetch` rebuilds the panel from these
 public sources.
+
+---
+
+## Admissible universe: attrition cascade
+
+The paper states the five admissibility conditions and the eight admitted
+currencies (§6.1); the full attrition arithmetic — reproduced by
+`ppp_sweep_bis.py` from the public BIS bulk export and the World Bank CPI
+API — lives here.
+
+A currency `i` belongs to the admissible universe `U` iff it satisfies
+
+| Condition | Statement |
+|---|---|
+| (C1) | Own currency, continuously observed 1973–2024 |
+| (C2) | `T_i ≥ 45` |
+| (C3) | `max_t π_it < 0.30` (no annual CPI inflation above 30%) |
+| (C4) | `Var(Δq_it)` conditionally stable |
+| (C5) | At least one exogenously datable currency-regime event (a known-date regime in the sense of Perron 1989) |
+
+Attrition, applied to the complete BIS annual universe of **192 area–currency
+series covering 147 distinct currencies**:
+
+| Stage | Removed | Remaining |
+|---|---|---|
+| (C1)+(C2): own-currency/continuity triage (ISO-issuer rule removing currency unions, back-calculated euro-legacy series, and non-issuer users of shared currencies; hard-peg screen) and the span condition | 122 | **70** |
+| (C3): inflation ceiling | 40 | **30** |
+| (C4): conditional-variance gate | 5 | **25** |
+| (C5): known-date condition — 14 managed floats against unannounced baskets or de-facto pegs with no exogenously datable regime event against the dollar, plus 3 crisis-identified near-misses | 17 | **8** |
+
+Admitted: **AUD, CAD, CHF, GBP, JPY, NOK, NZD, SEK** against the US dollar,
+annual, 1973–2024 (`T = 52`).
+
+**Two operationalizations of (C4).** (1) *Declared gate (envelope form)* —
+variance-ratio, robust Levene, and a CUSUM-of-squares statistic evaluated
+against the envelope of the admitted set. (2) *Pre-registered absolute form*
+— a two-sided `F` test for the variance ratio, Brown–Forsythe, and the
+CUSUM-of-squares in the heteroskedasticity- and dependence-robust `κ₂` form
+of Sansó et al. (2004), evaluated on a significance grid from 5% down to 1%.
+Under the absolute form, **six of the eight** admitted currencies pass at
+every level and **seven** pass at 1%; the single marginal case is the Swiss
+franc.
+
+**The three near-misses.**
+
+| Currency | Why it clears the mechanical gates | Why it is excluded |
+|---|---|---|
+| Korean won | Passes, but narrowly: peak inflation 28.7% | 1997 event is a twin currency–banking crisis; the level shift arrives jointly with a variance shift the level-only apparatus does not model |
+| Thai baht | Passes (C4) under the declared envelope | Same crisis-driven identification |
+| South African rand | Passes (C4) under **both** operationalizations | Same crisis-driven identification |
+
+All three are left to the variance-break extension discussed in the paper's
+conclusion.
 
 ---
 
@@ -334,6 +388,24 @@ sensitivity of `c̄` and the critical values to the two methods. Full design
 parameters, seeds, and the raw per-replication vectors are archived to
 permit exact reproduction.
 
+**Total design size and replication counts elsewhere.** The grid above
+enumerates to **418 break configurations** across all `(m,T)` cells (the
+`m = 0` cell has no break locations and is instead seed-replicated, per
+above). The same `R_cv`/`R_pow` convention scales to the paper's other
+Monte Carlo exhibits:
+
+| Object | Replications |
+|---|---|
+| Table 2 / Figure 1 (size-corrected power) | `N = 2 × 10⁵` |
+| Figure 2 (empirical size) | `2 × 10⁵` |
+| Table 3 (finite-sample critical values) | `4 × 10⁵` |
+| Table 6, columns (N) and (III) | `50,000`, configuration-derived seeds |
+| Half-life bootstraps (Table 8) | `B = 20,000` |
+
+The 1%, 2.5%, and 10% points, with Monte Carlo standard errors, for all five
+M-class statistics (`MZ_t`, `MZ_α`, `MSB`, `MPT`, `ADF-GLS`) are tabulated
+alongside the 5% points reported in the paper but were not printed there.
+
 ---
 
 ## Reproducibility & integrity checks
@@ -404,6 +476,81 @@ the half-life estimate (Table 9). Full diagnostic, both the constant-mean
 and level-break specifications, both rules:
 `ppp_ar_diagnostic.csv` (`python select_ar_order.py --start 1973 --kmax 10`).
 
+### Applied nuisance calibration (§6 footnote)
+
+`boot_ppp_cbar.py`'s **surface** calibration draws the AR(`p`) coefficient
+*family* afresh each replication: the first partial autocorrelation is fixed
+at `--pac1` (default **0.27**, the median first-lag ADF coefficient of the
+eight residual series at their selected orders; provenance in
+`pac_diagnostic.py`), higher-order coefficients drawn uniform on `[-0.3,
+0.3]`. Each currency's **empirical critical value** is instead *sieve-own*:
+simulated under that currency's own fitted AR(`p̂`) coefficients, held fixed
+across replications and seeded by the full configuration (break dates, break
+count, AR order, short-run dynamics) — so the critical value is a property
+of the configuration, not of the currency label. `--common-nuisance`
+reproduces the family design for the empirical block as a sensitivity,
+archived under `boot_out/sensitivity/`.
+
+The surface tabulates a `p = 4` cell that no admitted currency needs; it
+moves in the *opposite* direction from `p = 1, 2`, landing 1.35 beyond the
+i.i.d. value — a reminder that the family design's monotonicity in `p` is
+local, not global. A dedicated tangency search at the *exact* empirical break
+fractions (the `--bp` flag), rather than the `λ`-averaged cell the surface
+ships, moves `c̄*` by −0.26 (`p = 1`) and −0.90 (`p = 2`) at a feasible-power
+cost of 0.03–0.04; size is unaffected by construction. This exact-fraction
+displacement is archived under `boot_out/sensitivity/`
+(`lambda_exact_bp12_19.md`) alongside the seed- and design-sensitivity CSVs.
+
+### Half-life bootstrap schemes (§6.4 footnote)
+
+`hl_median_unbiased.py` reports two interval schemes for the median-unbiased
+(Andrews–Chen) half-life estimator, both at `B = 20,000`:
+
+- **Grid-*t* bootstrap** (Hansen 1999), valid uniformly in `α` including the
+  unit-root neighborhood (Mikusheva 2007). The `t`-statistic's acceptance
+  region is inverted on a grid refined to step **0.005** near the unit root,
+  so the finite/infinite classification of the upper confidence limit is
+  stable in the number of bootstrap replications.
+- **Recursive residual bootstrap** — the design-consistent baseline under the
+  conditional-homoskedasticity gate (C4).
+- **Heteroskedasticity-robust wild bootstrap** — Rademacher multipliers,
+  `e*_t = ê_t · η_t` at the aligned residual position, in the fixed-design
+  construction of Cavaliere and Taylor (2008) for the unit-root neighborhood.
+  This is the scheme reported in Table 9.
+
+The two schemes agree under homoskedasticity by construction; the two Nordic
+interval collapses (Table 9) are invariant to the scheme and stable in the
+replication count. Medians are computed from unrounded estimates; the
+impulse-response half-life (first crossing of 0.5) falls within one year of
+the scalar figure throughout.
+
+### Table 6 validation gate (§S2 footnote)
+
+`ppp_two_axis_columns.py --validate` reconciles every deterministic quantity
+(`MZt` (II)/(III)) and the one genuinely Monte Carlo quantity (`cv` (III),
+`pval` (III)) it computes against the archived production values of Table 6,
+before the module will emit column (N). Columns (N) and (III) are simulated
+under **common random numbers**, so any discrepancy is attributable to `c̄`
+alone, not to independent simulation error.
+
+`python ppp_two_axis_columns.py --validate --nrep 50000` returns
+`[OK] reproduction accepted`: all 32 comparisons (8 currencies × 2 columns ×
+2 quantities) pass — the 16 deterministic `MZt` values to two-decimal
+rounding (worst `|diff| = 0.004`, `TOL_STAT = 0.02`), `cv` (III) with
+`|diff|` in `[0.001, 0.022]` (`TOL_CV = 0.04`), `pval` (III) within `0.008`.
+`_test_kernel_equivalence` additionally locks the statistic to
+`mlb_core.mstats_nb` at `1e-8` whenever the kernel is importable. See
+`CHANGELOG.md` §`[1.3.1]` for the root-cause history behind the two fixes
+this gate required.
+
+### External reference implementation
+
+Carrion-i-Silvestre, Kim & Perron's publicly archived GAUSS library,
+[`gauss-carrion-library`](https://github.com/aptech/gauss-carrion-library),
+dispatches the slope-only and level-and-slope specifications to the same
+response-surface procedure — corroborating on the implementation side the
+cancellation result behind Model LB's no-trend restriction.
+
 ### Pesaran CD statistic — pairwise breakdown (§6.3 footnote)
 
 `pesaran_cd.py` on the eight univariate Model LB residuals, 1973–2024:
@@ -425,6 +572,13 @@ the sign of the positive mean correlation (the input to the §6.3
 dependence-adjusted probability bound, `dependence_bound.py`), not its
 magnitude. Reproduce: `python pesaran_cd.py --start 1973` (levels) and
 `--difference` (first differences).
+
+`dependence_bound.py` prices this dependence into the §6.3 rejection-count
+argument with a one-factor equicorrelated Gaussian approximation at mean
+pairwise correlations 0.37–0.41 (the levels/differences range above),
+raising the probability of zero rejections under `H1`-throughout from
+**0.006** (independence) to **0.09–0.10**; `dependence_count_pmf.py` gives
+the full rejection-count PMF by exact enumeration.
 
 ---
 

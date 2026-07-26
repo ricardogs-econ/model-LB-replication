@@ -19,6 +19,12 @@ checkpoints_section3_4/
 ck_*/
 venv/
 .venv/
+.vscode/
+*.zip
+.DS_Store
+Thumbs.db
+progress.log
+.ipynb_checkpoints/
 limiting_density.csv
 power_comparison.csv
 # rendered figures (produced by generate_figures.py, overdetrend_power.py,

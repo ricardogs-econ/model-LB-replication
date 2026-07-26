@@ -11,5 +11,9 @@
   ],
   "creators": [
     {"name": "Gonçalves Silva, Ricardo", "affiliation": "Independent researcher, São Carlos, Brazil"}
+  ],
+  "related_identifiers": [
+    {"identifier": "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7138278", "relation": "isSupplementTo", "resource_type": "publication-preprint"},
+    {"identifier": "https://mpra.ub.uni-muenchen.de/130117/", "relation": "isSupplementTo", "resource_type": "publication-preprint"}
   ]
 }

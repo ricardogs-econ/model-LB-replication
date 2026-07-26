@@ -171,13 +171,13 @@ LAM      = (1.0/3.0, 2.0/3.0)                       # fractions of the 2 breaks
 BREAK_POS = [int(np.floor(l * T)) for l in LAM]     # [20, 40]
 ALPHA    = 0.05
 SEED0    = 12345
-BETA     = 5.0                                       # magnitude θ dos saltos (a
+BETA     = 5.0                                       # break magnitude theta (the
                                                      # statistic is invariant to theta;
-                                                     # mantemos ≠0 por realismo)
+                                                     # kept nonzero for realism)
 C_ALT    = -10.0                                     # I(0) alternative of column (iii)
-                                                     # (raiz AR ≈ 1−10/60 ≈ 0.83)
+                                                     # (AR root ~ 1-10/60 ~ 0.83)
 C_GRID   = list(np.round(np.arange(0.0, -30.01, -2.0), 1))   # alternatives (power curve)
-CBAR_GRID = list(np.round(np.arange(-20.0, -2.9, 0.5), 2))   # grade p/ recalibrar c̄
+CBAR_GRID = list(np.round(np.arange(-20.0, -2.9, 0.5), 2))   # grid for recalibrating c-bar
 
 DEF = dict(R_cv=10000, R_table=10000, R_curve=10000, R_calib_cv=3000, R_calib_pow=3000)
 SPD = dict(R_cv=300,  R_table=300,  R_curve=150,  R_calib_cv=300,  R_calib_pow=300)
@@ -188,7 +188,7 @@ SPD = dict(R_cv=300,  R_table=300,  R_curve=150,  R_calib_cv=300,  R_calib_pow=3
 # =============================================================================
 def stat_sample(cbar, c, n, seed, stat='mzt', beta=BETA, lambdas=LAM):
     """n draws of statistic `stat` under local parameter c, with the 2 breaks of
-    level (magnitude beta), tested in Model LB at the BREAK_POS com o c̄ dado."""
+    level (magnitude beta), tested in Model LB at BREAK_POS with the given c-bar."""
     out = np.empty(n)
     for i in range(n):
         y, _ = generate_dgp(T, lambdas, c, seed + i, beta_scale=beta)

@@ -850,24 +850,19 @@ def already_done(P, T, m, lambdas):
 
 def run_grid(P, n_jobs=-1, chunk_size=None):
     """
-    Executa a grade pendente e REPORTA PROGRESSO DE FORMA GARANTIDA.
+    Runs the pending configuration grid with guaranteed progress reporting.
 
-    PROBLEMA CORRIGIDO: no caminho paralelo (joblib, o default/recomendado
-    via --jobs -1), the only feedback was joblib's internal `verbose=5`,
-    calling `Parallel(...)` ONCE over the whole `todo` list. That returns
-    control to the main process only when EVERYTHING finishes -- with no
-    progress print in between, the terminal stays silent for potentially
-    hours on a full production grid. The serial path (n_jobs=1) printed per
-    config, but that is not the path used in production.
-
-    FIX: the grid is split into BATCHES; `Parallel` is opened as a context
+    The grid is split into batches; `Parallel` is opened once as a context
     manager (reusing the worker pool across batches, without re-paying the
-    spawn cost) and called once per batch. Since each `parallel(...)` call
-    blocks until its batch finishes and then returns control to the MAIN
-    process, the between-batch progress print is guaranteed -- it does not
-    depend on worker stdout being forwarded nor on joblib's internal verbosity.
-    Progress is also WRITTEN to `<checkpoint_dir>/progress.log` (append,
-    immediate flush), for `tail -f` when the script runs in background/nohup.
+    spawn cost) and called once per batch. Each `parallel(...)` call blocks
+    until its batch finishes and then returns control to the main process,
+    so a progress print after every batch does not depend on worker stdout
+    being forwarded or on joblib's internal verbosity -- unlike a single
+    `Parallel(...)` call over the whole `todo` list, which only returns
+    control when everything finishes and can leave the terminal silent for
+    hours on a full production grid. Progress is also written to
+    `<checkpoint_dir>/progress.log` (append, immediate flush), for `tail -f`
+    when the script runs in background/nohup.
     """
     os.makedirs(P['checkpoint_dir'], exist_ok=True)
     cfgs = enumerate_configs(P)

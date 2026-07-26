@@ -2,7 +2,7 @@
 """
 ================================================================================
 replicate_section3_4.py -- Sections 3-4: finite-sample calibration surface and
-    the null-law Monte Carlo that backs Figure 1.
+    the null-law Monte Carlo that backs Figure S1.
 ================================================================================
 
 This is a COMPUTE module: it writes CSV artifacts and never draws figures.
@@ -17,13 +17,13 @@ WHAT IT PRODUCES
         run_model_lb.py.
 
     limiting_density.csv    (--limiting-density)
-        The processed plotting data behind Figure 1 (the null MZ_t law across m).
+        The processed plotting data behind Figure S1 (the null MZ_t law across m).
         Long format: columns [panel, T, m, x, y]. Two panel kinds:
           panel="density" : Gaussian-KDE density y at abscissa x, for
-                            (T=300, m=0..3) -> Fig. 1(a) and (T=60, m=0..3)
-                            -> Fig. 1(c);
+                            (T=300, m=0..3) -> Fig. S1(a) and (T=60, m=0..3)
+                            -> Fig. S1(c);
           panel="ecdf"    : empirical CDF y at abscissa x, for (T=300, m=0..3)
-                            -> Fig. 1(b), the rejection-tail panel.
+                            -> Fig. S1(b), the rejection-tail panel.
         The heavy Monte Carlo (R draws of the null MZ_t per cell) and the KDE/ECDF
         reduction happen HERE; generate_figures.py only draws the stored lines.
 
@@ -32,7 +32,7 @@ METHOD
     feasible point-optimal statistic crosses 0.50 (the ERS 50%-power tangency),
     interpolated on a c-bar grid; the critical values are the lower percentiles
     of the null (driftless random walk) law in the exact break configuration.
-    Figure-1 law: R replicates of MZ_t under H0 (c=0) for Model LB with m
+    Figure-S1 law: R replicates of MZ_t under H0 (c=0) for Model LB with m
     equispaced breaks, GLS-detrended at the cell's c-bar*, difference-based
     sigma^2. Before writing, an integrity GATE compares the simulated 5% quantile
     to the tabulated MZ_t CV5 (same surface CSV), cell by cell, in combined Monte
@@ -42,8 +42,8 @@ METHOD
 USAGE
     python replicate_section3_4.py --full               # paper surface (hours)
     python replicate_section3_4.py --quick              # surface smoke test
-    python replicate_section3_4.py --limiting-density   # Fig. 1 data (needs the surface CSV; ~minutes at R=50,000)
-    python replicate_section3_4.py --limiting-density --quick   # Fig. 1 data, reduced R
+    python replicate_section3_4.py --limiting-density   # Fig. S1 data (needs the surface CSV; ~minutes at R=50,000)
+    python replicate_section3_4.py --limiting-density --quick   # Fig. S1 data, reduced R
     python replicate_section3_4.py --jobs 8 --outdir .
 
 DETERMINISM & COST
@@ -72,9 +72,9 @@ except ImportError:
 SURFACE_CSV = "cbar_surface.csv"
 LIMITING_DENSITY_CSV = "limiting_density.csv"
 
-# ---- Figure-1 null-law configuration (matches the manuscript) ----------------
+# ---- Figure-S1 null-law configuration (matches the manuscript) ---------------
 T_LARGE, T_SHORT = 300, 60          # panels (a)/(b) at large T; panel (c) at short T
-M_LIST = [0, 1, 2, 3]               # break counts overlaid in Figure 1
+M_LIST = [0, 1, 2, 3]               # break counts overlaid in Figure S1
 R_DENSITY = 50_000                  # production draws per (T,m) cell
 R_DENSITY_QUICK = 2_000             # smoke-test draws
 DENSITY_SEED = 20260701             # base seed; per-cell seed = base + 1000*T + m
@@ -224,7 +224,7 @@ def build_limiting_density(args):
     for T in (T_LARGE, T_SHORT):
         for m in M_LIST:
             if (m, T) not in cells:
-                raise KeyError(f"surface CSV lacks cell (m={m}, T={T}); cannot anchor Figure 1.")
+                raise KeyError(f"surface CSV lacks cell (m={m}, T={T}); cannot anchor Figure S1.")
             cbar = cells[(m, T)]["cbar"]
             sims[(T, m)] = simulate_mzt_null(T, m, cbar, R, seed + 1000 * T + m)
             print(f"  simulated (T={T}, m={m}): n={len(sims[(T, m)])}, cbar={cbar:.3f}")

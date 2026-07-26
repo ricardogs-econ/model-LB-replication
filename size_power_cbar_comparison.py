@@ -3,8 +3,11 @@ size_power_cbar_comparison.py
 =============================
 Size and power comparison of three c-bar specifications for the Model LB
 (constant + level dummies) point-optimal unit-root test. Produces the power
-table of the paper's robustness section and the power-curve data
-behind Figure 3 (fig_power).
+table of the paper's robustness section and the power-curve data behind the
+legacy power-comparison figure (superseded by overdetrend_power.py's
+Figure_1.pdf as of v1.3.0; still regenerable at
+legacy_figures/Figure_legacy_power_comparison.pdf via
+`generate_figures.py --only legacy-power`).
 
 Compares THREE c-bar specifications for the MZt test of MODEL LB (constant + 2
 level dummies DU), at T=60, m=2, alpha=0.05:
@@ -35,7 +38,7 @@ OUTPUTS (this module is compute-only; it draws no figures):
     - prints the power table (rejection rates +/- Monte Carlo error)
     - writes tab_power.tex (the table body)
     - writes power_comparison.csv (the power curves; generate_figures.py reads
-      it to render fig_power.pdf)
+      it to render legacy_figures/Figure_legacy_power_comparison.pdf)
 
 USAGE:
     python size_power_cbar_comparison.py            # production
@@ -320,11 +323,13 @@ def main():
         f.write(tex)
     print("[written] tab_power.tex")
 
-    # ---- persist the power-curve data (generate_figures.py draws Figure 3) --
+    # ---- persist the power-curve data (generate_figures.py draws the legacy
+    # power-comparison figure) --------------------------------------------
     # This module is compute-only: it writes the curve to power_comparison.csv;
-    # generate_figures.py reads that CSV and renders fig_power.pdf. alpha and
-    # c_alt (the column-(iii) alternative) are stored so the figure's annotation
-    # lines are reproducible without hard-coded constants.
+    # generate_figures.py reads that CSV and renders
+    # legacy_figures/Figure_legacy_power_comparison.pdf (`--only legacy-power`).
+    # alpha and c_alt (the column-(iii) alternative) are stored so the figure's
+    # annotation lines are reproducible without hard-coded constants.
     curve_csv = os.path.join(args.outdir, "power_comparison.csv")
     with open(curve_csv, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)

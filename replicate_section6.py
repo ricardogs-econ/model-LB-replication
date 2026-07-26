@@ -17,8 +17,8 @@ WHAT IT PRODUCES  (stages, run in order unless one is selected)
             bootstrap intervals, and the level-break vs constant-mean
             decomposition.  -> hl_results.csv
     Figures are NOT produced here: all plotting lives in generate_figures.py,
-    which reads hl_results.csv / hl_results_wild.csv (Fig 5) and
-    ppp_panel.csv / exog_dates.csv (Fig 4). Run it after this module.
+    which reads hl_results.csv / hl_results_wild.csv (Fig S2) and
+    ppp_panel.csv / exog_dates.csv (Fig 3). Run it after this module.
 
 DATA (public; see "Data sources" in the README and each script header)
     ppp_panel.csv -- the eight admissible real exchange rates q_it, 1973-2024,

@@ -11,7 +11,8 @@ Closes the `[1.3.0]` "Known issue" (`ppp_two_axis_columns.py --validate`'s
 simulated `cv (III)` systematically more negative than published), plus
 release-hygiene cleanup: internal process notes removed from the tracked
 tree, and procedural detail the manuscript's revision 3 now delegates to
-this package folded into `README.md`.
+this package folded into `README.md`. Archived on Zenodo (version DOI
+`10.5281/zenodo.21610828`).
 
 ### Fixed
 - `ppp_two_axis_columns.py`: the AR **order** fix in `[1.3.0]` (reading `p`

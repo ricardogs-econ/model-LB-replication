@@ -1,0 +1,41 @@
+{
+ "job": "replicate_section6 (G19 §6, corrected surface + kernel)",
+ "git_commit_at_run": "c254d407b0166c69f5c83b19d06a352487630b3d",
+ "surface": "cbar_surface.csv (corrected, C4)",
+ "kernel": "canonical (mlb_core), four-correction",
+ "stages": {
+  "boot": {
+   "invocation": "replicate_section6.py boot --full --empirical",
+   "note": "--full REGENERATES boot_out/calib/surface_ppp_boot.csv on the corrected kernel, then --empirical runs the test. The shipped default (--empirical only) reuses a stale surface -- see refactor/39.",
+   "wall_s": 1118,
+   "wall_s_caveat": "contaminated: hl/pesaran_cd/sweep ran concurrently; upper bound",
+   "cells": "5 (m=2, T=52, p in {0,1,2,4}; 15 lambda x 35 cbar each)",
+   "n_jobs": 12,
+   "outputs": ["boot_out/calib/surface_ppp_boot.csv", "boot_out/empirical/ppp_empirical.csv", "boot_out/calib/delta_cbar_with_without_AR.csv"]
+  },
+  "hl": {
+   "invocation_MP_baseline": "replicate_section6.py hl (default --boot recursive) -> hl_results.csv",
+   "invocation_LB_reported": "replicate_section6.py hl --boot wild -> hl_results_wild.csv",
+   "note": "The printed tab:hl LB CI is the WILD bootstrap; the shipped default is recursive -- see refactor/39.",
+   "wall_s": "~12-32 per scheme",
+   "gitignored": true
+  },
+  "sweep": {
+   "invocation": "ppp_sweep_bis.py --fetch --exog exog_dates.csv --out ppp_sweep --c4-mode both",
+   "fetched": ["BIS WS_XRU_csv_flat.zip (10,301,660 B, data.bis.org)", "WB CPI FP.CPI.TOTL (3,093,689 B, api.worldbank.org)"],
+   "wall_s": 72,
+   "result": "envelope mode admits 8 (paper's universe); absolute mode admits 5",
+   "gitignored": true
+  },
+  "cd": {
+   "invocation": "pesaran_cd.py",
+   "result": "levels CD=14.0391 rho_bar=0.3679 mean_abs_rho=0.4121; first-diff CD=8.6526; N=8",
+   "gitignored": true
+  }
+ },
+ "headline": "tab:ppp (III): CAD's boundary-dagger cell (MZt -2.08 below cv -2.07, margin -0.01, p 0.049) becomes an unambiguous non-rejection (MZt -2.058 above cv -2.152, margin +0.094, p 0.065). All 8 currencies now clean non-rejections. tab:hl / CD / tab:dates reproduce (invariant to the four corrections).",
+ "reproducibility_gaps_found": [
+  "replicate_section6.py boot default (--empirical only) reuses a stale [HISTORICAL] surface_ppp_boot.csv; needs --full",
+  "replicate_section6.py hl default (recursive) is not the reported wild-bootstrap LB column"
+ ]
+}

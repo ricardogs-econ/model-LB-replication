@@ -1,8 +1,8 @@
-# Replication package -- Python dependencies (tested with Python 3.12).
+# Model LB replication package -- Python dependencies (tested with Python 3.12).
 # Pin these for exact reproduction; newer minor versions are expected to work.
 numpy>=1.26,<3
-scipy>=1.11          # replicate_section6.py (sweep): Brown-Forsythe F p-value
-numba>=0.59          # JIT kernels in mlb_core.py (compiled once, cached)
-matplotlib>=3.7      # figures (generate_figures.py)
+scipy>=1.11          # empirical bootstrap (bootstrap_empirical door)
+numba>=0.59          # the JIT kernel (src/mlb/kernel_numba.py); numba-only, no fallback
+matplotlib>=3.7      # figures (figures door)
 joblib>=1.3          # parallel Monte Carlo (calibration and robustness)
-# No pandas / openpyxl required: all I/O is via the csv standard library.
+pandas>=2.0          # surface aggregation and table rendering

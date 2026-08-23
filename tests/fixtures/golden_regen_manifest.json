@@ -1,0 +1,19 @@
+{
+ "artifact": "golden-master reference set (golden_kernels.json, golden_run_grid.json, golden_cli.json)",
+ "regenerated_against": "the v2.0.0 corrected kernel (Perron-Qu OLS-GLS sigma^2; M-statistic T-normalisation; DGP initial condition u0=0 i.e. u1=eps1; the two Ng-Perron residual variances)",
+ "reason": "the previous goldens were frozen before those four corrections, so the corrected MAIC-path statistics and calibration surface differed from them by the correction magnitude. Regenerated so the parity suite verifies against the kernel this package actually ships.",
+ "source_commit": "DIRTY:b8c5bb788d614120820ae96d440183aff261bb70",
+ "regenerated_date": "2026-08-16",
+ "generator": "tools/make_golden.py all",
+ "determinism": "fixed seeds (kernel fingerprints seed 20260701; run_model_lb rng default_rng(9099)); resume-safe",
+ "coverage": {
+  "golden_kernels.json": "per-config mstats / detrend / Lmat numeric fingerprints",
+  "golden_run_grid.json": "T=60, m=0/1 calibration grid; Lemma invariance max|MZt(b0)-MZt(b10)|=3.86e-10, mean power at optimum 0.5000",
+  "golden_cli.json": "8 CLI entry points recorded and re-run by test_parity; modulus_numerics exceeds the 420s recording cap and is stored returncode=TIMEOUT>420s (the parity suite skips any job with wall>120s, so it is not a failure)"
+ },
+ "per_file_sha256": {
+  "golden_kernels.json": "750aa37892059df5b4aef98fe18b086552ada722740eb24dcfc016ec76e0ab4c",
+  "golden_run_grid.json": "4031ecf6adaf9a66ac86fc2a928b9272d1edf41d7affe1cafd20dd0edc711751",
+  "golden_cli.json": "b2795db8af26d472231a6d21f116d365834234a09277cc18aea3c4210deb923c"
+ }
+}

@@ -1,0 +1,25 @@
+# Lint/format configuration (brief s.5). Line length: 88.
+#
+# legacy/ is EXCLUDED entirely: kernel_materiality_frozen.py is mandated
+# byte-frozen in its numerical content (brief s.0.4(2)) and select_ar_order
+# is retired dead code. The moved kernels (src/mlb/kernel_numba.py,
+# kernel_numpy.py) and every inherited script are CHECKED but not
+# auto-formatted: reformatting inherited numerical code churns the diff
+# against the golden-master history for zero numeric benefit, and format
+# edits inside @njit bodies are exactly the risk brief s.0.6 warns about.
+# `ruff format` is therefore applied only to files authored by the refactor
+# (tools/, tests/, drivers/, src/mlb excluding the two kernels); the check
+# report for everything else is published, not suppressed (F24: no blanket
+# noqa anywhere).
+
+line-length = 88
+target-version = "py312"
+
+exclude = [
+    "legacy",
+    "__pycache__",
+    "boot_out",
+]
+
+[lint]
+select = ["E", "F", "W"]

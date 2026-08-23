@@ -12,6 +12,7 @@
 <p align="center">
   <a href="https://doi.org/10.5281/zenodo.21229773"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.21229773.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
+  <img alt="Version 2.0.0" src="https://img.shields.io/badge/version-2.0.0-blue">
   <img alt="Python 3.12" src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white">
   <img alt="Reproducible" src="https://img.shields.io/badge/build-reproducible-success">
   <img alt="Self-checked" src="https://img.shields.io/badge/tables%20%26%20figures-self--checked-success">
@@ -29,24 +30,23 @@ surface `c̄(m,T)` that keeps it correctly sized at the short spans macro data
 actually offer. It then applies the apparatus to the **purchasing power parity
 puzzle** on eight admissible real exchange rates, 1973–2024.
 
-Every number in the paper is reproducible from the code plus two raw data
-files, and every table and figure ships with a one-command self-check.
+Every number in the paper is reproducible from the code plus the shipped frozen
+inputs, and every table and figure ships with a one-command self-check.
 
 ### Design in one line
 
 ```text
-compute modules  ──write──▶  CSV artifacts  ──read──▶  generate_figures.py ──▶ PDFs
+compute modules  ──write──▶  CSV artifacts  ──read──▶  figures ──▶ PDFs
 (numba Monte Carlo)          (traceable data)          (grayscale, no simulation)
 ```
 
-The numerical work lives in **one kernel** (`mlb_core.py`, with a pure-Python
-fallback). Computation and plotting are strictly separated: compute modules
-only write CSVs; `generate_figures.py` only reads them. A referee can
-regenerate the CSV-backed figures (`Figure_3`, `Figure_S1`, `Figure_S2`) from
-the shipped data **without running any simulation**. The two referee-response
-figures, `Figure_1.pdf` and `Figure_2.pdf`, are the exception: each is a
-small, self-contained Monte Carlo (well under a minute) run directly by
-`overdetrend_power.py` / `materiality_figure.py` — see "Figures" below.
+The numerical work lives in **one kernel** (`src/mlb/kernel_numba.py`). The
+kernel is **numba-only**: there is no pure-Python fallback, because a fallback
+could return a silently different calibration number on the MAIC `k≤0` `s²`
+path — and a replication package must not ship that. `requirements.txt` pins
+numba. Computation and plotting are strictly separated: compute modules only
+write CSVs; the figure code only reads them. A referee can regenerate the
+CSV-backed figures from the shipped data **without running any simulation**.
 
 ---
 
@@ -54,17 +54,21 @@ small, self-contained Monte Carlo (well under a minute) run directly by
 
 ```bash
 python -m pip install -r requirements.txt   # numpy, scipy, numba, matplotlib, joblib
-python mlb_core.py --selftest               # sanity gates (kernel vs arch.DFGLS, invariance)
+python replicate.py                         # door table + every door in --quick
 ```
+
+`python replicate.py` prints the door table and reproduces every printed object
+from the shipped frozen inputs and golden artefacts — fast, no heavy Monte
+Carlo. Add a door name to run just one; add `--full` to regenerate.
 
 ### Apply the test to your own series
 
-`run_model_lb.py` is a self-contained CLI: point it at a CSV, name the series,
-and give the known break dates.
+`model_lb/model_lb_standalone.py` is a self-contained CLI: point it at a CSV,
+name the series, and give the known break dates.
 
 ```bash
-python run_model_lb.py --csv myseries.csv --col rer --date-col year \
-       --breaks 1985,1992 --sigma2 maic --calib cbar_surface.csv
+python model_lb/model_lb_standalone.py --csv myseries.csv --col rer --date-col year \
+       --breaks 1985,1992 --sigma2 maic --calib inputs/cbar_surface.csv
 ```
 
 | Flag | Meaning |
@@ -74,161 +78,81 @@ python run_model_lb.py --csv myseries.csv --col rer --date-col year \
 | `--date-col` | optional date column, to match `--breaks` |
 | `--breaks` | comma-separated exogenous break **dates** |
 | `--sigma2` | long-run variance: `const` (difference-based) or `maic` |
-| `--calib` | calibration surface (`cbar_surface.csv`) for the finite-sample `c̄` and critical value |
+| `--calib` | calibration surface (`inputs/cbar_surface.csv`) for the finite-sample `c̄` and critical value |
 | `--alpha`, `--kmax`, `--nsim`, `--json` | level, MAIC lag ceiling, on-the-fly CV reps, JSON output |
 
 ---
 
 ## Repository layout
 
-### Core kernel — imported, not run directly
+```
+replicate.py              single entry point (door table + dispatch; --quick default, --full opt-in)
+src/mlb/                  the numba kernel + facades + the single path resolver
+  kernel_numba.py           @njit GLS-detrending, the five M-class statistics, calibration driver
+  paths.py                  the single resolver (inputs AND outputs); no file finds its own path
+  kernel_select.py          the one documented kernel binding (numba-only)
+  design.py detrend.py dgp.py lrv.py resample.py statistics.py calibrate.py aggregate.py io.py
+section_replications/     one door per theoretical layer (named by the manuscript's \label)
+  critical_values.py        sec:calibration/cv/shortcuts: tab:cbar, tab:cv, tab:power, fig:overdetrend, fig:size
+  robustness.py             sec:robustness: tab:ar1-sizepower, stab:recal  (ar1_sizepower_recal engine)
+  bootstrap_empirical.py    sec:empirical: tab:dates, tab:hl, tab:ppp, tab:pppsurface, fig:rerseries
+  supplement.py             appendix S: stab:objects, stab:disp, stab:disp/L_T, sfig:density, sfig:forest
+  figures.py                fig1..figS2 (consolidated figure rendering)
+model_lb/                 standalone: apply Model LB to your own series (model_lb_standalone.py)
+inputs/                   frozen inputs a --quick run reads (never regenerated here)
+  cbar_surface.csv          the calibration surface (produced_outside, regenerable_here=false)
+  ppp_panel.csv exog_dates.csv ppp_ar_diagnostic.csv DATA_TERMS.md
+  limiting_density.csv       Fig S1 limiting null law (frozen; renders sfig:density)
+  boot_out/calib/            surface_ppp_boot.csv (tab:pppsurface source)
+  boot_out/sensitivity/      §S5 common-nuisance / seed / lambda-exact arms (archived per the supplement)
+  ppp_sweep/                 sweep_gates.csv -- series-by-series admissibility attrition (C1-C5)
+  MANIFEST.json             per-file sha256, provenance_class, regenerable_here
+  OBJECT_MAP.csv            number -> producer -> artefact -> digest (the reproduction map)
+output/golden/            the promoted, frozen printed artefacts (.tex / .csv / .json)
+tests/                    invariance/convention tests (theta, chunk, --jobs, PQ k=0)
+```
 
-| File | Role |
-|---|---|
-| `mlb_core.py` | **The kernel.** `@njit` GLS-detrending and the five M-class statistics, the calibration driver (`run_grid` / `aggregate`), the single-series `run_test`, and the validation gates. Aggregate cached checkpoints with `--post`. |
-| `mlb_kernel.py` | Pure-Python fallback for `mlb_core` when numba is unavailable (bit-identical, ~45× slower). |
-
-### Section drivers — one per paper section
-
-| File | Reproduces |
-|---|---|
-| `replicate_section3_4.py` | **§3–4** — the calibration surface `c̄(m,T)` and the five critical values → `cbar_surface.csv`. `--limiting-density` writes the Figure S1 null-law data. Compute-only. |
-| `replicate_section5.py` | **§5** — robustness (`ar1`, `oracle`, `trimming`) and the power comparison (`power`). |
-| `replicate_section6.py` | **§6** — the PPP application: admissibility `sweep`, AR(p) `boot`, median-unbiased `hl`. |
-
-### Experiment / compute modules
-
-| File | Produces |
-|---|---|
-| `robustness.py` | §5 experiments: LRV-estimator choice, AR(1) size/power, recalibration, trimming, cross-validation. |
-| `size_power_cbar_comparison.py` | §5 power table (`tab_power.tex`) and the curve data (`power_comparison.csv`) behind the **legacy** power-comparison figure (superseded by `overdetrend_power.py`; see "Figures" below). |
-| `boot_ppp_cbar.py` | §6 applied calibration and the per-currency empirical block (Tables 7–8). AR(p) nuisance controlled by `--pac1` / `--common-nuisance` / `--bp` / `--seed-base` (see the script header and `MC_vs_BOOTSTRAP.md`). |
-| `hl_median_unbiased.py` | §6 median-unbiased (Andrews–Chen) half-lives with grid-t / wild bootstrap CIs (Table 9); writes the Figure S2 forest-plot data. |
-| `ppp_sweep_bis.py` | Exhaustive BIS-universe admissibility sweep (the funnel / gate table). |
-| `ppp_two_axis_columns.py` | §6 two-axis decomposition of Table `tab:ppp`'s column (III): isolates the SIZE axis (critical value) from the DETRENDING/POWER axis (`c̄`) by adding column (N), `c̄=-7` paired with a finite-sample cv. Self-contained (no import from the rest of the package); reads `ppp_ar_diagnostic.csv` as a data input. `--validate` checks it against the published table; `--recompute-p` selects the AR order independently as a diagnostic. |
-
-### Figures
-
-Three figures are CSV-then-plot pairs read by `generate_figures.py`; two are
-short, self-contained Monte Carlo + plot scripts of their own (fast enough —
-well under a minute — that the CSV-caching split was not worth adding for
-them). See each file's header for full usage.
-
-| File | Produces | Role |
-|---|---|---|
-| `materiality_c7_vs_surface.py` | `cbar_surface`-style printed table (no PDF) | Shared core for the two referee-response scripts below (`build_Z`, `detrender`, `Lmat`, `mzt`, `CV_ASY`, the tabulated `CBAR_STAR_BY_P` surface). Standalone: does the calibration surface materially beat the plain `c̄=-7` recipe? Prints the size/power contrast for (A) `c̄=-7`+asymptotic cv, (A′) `c̄=-7` size-corrected, (B) `c̄*(m,T)` size-corrected. |
-| `overdetrend_power.py` | `Figure_1.pdf` | Main text — size-corrected power lost by reusing a trend-break detrending value (`-13.5`, `-17`, `-21.7`) instead of the correct no-trend `c̄=-7`. |
-| `materiality_figure.py` | `Figure_2.pdf` | Main text — empirical size of the "`c̄=-7` + asymptotic cv" recipe vs `T`, for `m=0,1,2`: the over-rejection the finite-sample surface corrects. |
-| `generate_figures.py` | `Figure_3.pdf`, `Figure_S1.pdf`, `Figure_S2.pdf` | Reads CSV artifacts, no simulation. `Figure_3` (real exchange rates) needs `ppp_panel.csv`+`exog_dates.csv` (shipped); `Figure_S1` (limiting null law) needs `limiting_density.csv` (`replicate_section3_4.py --limiting-density`); `Figure_S2` (half-life forest) needs `hl_results.csv`+`hl_results_wild.csv` (`hl_median_unbiased.py`). Also renders two **legacy** figures (superseded, not cited by the manuscript, kept only so the underlying diagnostics stay regenerable) to `legacy_figures/`: the `c̄(m,T)` surface (`cbar_surface.csv`) and the old power-curve comparison (`power_comparison.csv`). Run `python generate_figures.py` (or `--only figS1`, etc.). |
-
-Figure numbering follows the manuscript exactly: main-text figures are
-`Figure_1`–`Figure_3` (Wiley convention, plain number); supplement figures
-carry the `S` prefix LaTeX assigns them there
-(`\renewcommand{\thefigure}{S\arabic{figure}}`), so `Figure_S1`/`Figure_S2`.
-
-### Tools & diagnostics
-
-| File | Role |
-|---|---|
-| `run_model_lb.py` | Stand-alone: apply Model&nbsp;LB to any series (see Quick start). |
-| `select_ar_order.py` | Regenerates `ppp_ar_diagnostic.csv` (BIC + general-to-specific AR order, 1973 window). |
-| `pac_diagnostic.py` | Provenance of the nuisance persistence: per-currency PACF of Δ(LB residual) and first-lag ADF coefficients → `ppp_pac_diagnostic.csv` (the median, 0.27, is the canonical `--pac1`). |
-| `pesaran_cd.py` | Pesaran (2004, 2015) cross-sectional-dependence test on the eight residual series (§6 footnote). |
-| `dependence_bound.py` | §6.3 dependence-adjusted probability of zero rejections (one-factor Gaussian). |
-| `dependence_count_pmf.py` | §6.3 full rejection-count PMF by exact enumeration. |
-| `check_lam_spread.py` | §4.3 lookup-vs-λ-polynomial diagnostic (thin wrapper over `mlb_core.surface_diagnostics`). |
-
-### Online supplement §S2 numerics
-
-Corroborate Theorem S2.1 (asymptotic equicontinuity of the power family) and
-its observable implication. Pure numpy; deterministic (`assumption1_numerics.py`)
-or Monte Carlo with a documented seed (`modulus_numerics.py`); no dependency on
-the kernel.
-
-| File | Role |
-|---|---|
-| `assumption1_numerics.py` | Closed-form vs. general construction of the quasi-differenced quadratic form, the Gram diagonal identity, non-degeneracy, the differencing corner (Lemma 2), the DF/ERS trace closure, and the `O((m+1)/T)` remainder — all at machine precision, no simulation. |
-| `modulus_numerics.py` | Monte Carlo estimate of the empirical modulus `M_T(h)` of the power family across `T ∈ {30,45,52,60,150,300}` (52 = the PPP panel's exact span); confirms `M_T(h)` shrinks with `h` and is stable in `T`, the observable content of Theorem S2.1. `--selftest` checks the core against `assumption1_numerics.py`'s closed form. |
-
-### Self-checks
-
-| File | Role |
-|---|---|
-| `reconcile_tables.py` | Reconciles the manuscript's Tables 1/2/6 (always) and 4/5/9 (after their drivers run) against the artifacts. |
-| `reconcile_boot.py` | Reconciles Tables 7–8 against `boot_out/`. |
-
-### Data & shipped artifacts
-
-| File | Kind |
-|---|---|
-| `ppp_panel.csv` | input — 8 real exchange rates, 1973–2024 (BIS × World Bank) |
-| `exog_dates.csv` | input — exogenous currency-regime break dates and sources |
-| `ppp_ar_diagnostic.csv` | derived — AR(p) order per currency |
-| `cbar_surface.csv` | bridge — the full production surface (46 `(m,T)` cells, `m = 0…5`, `T = 30…300`) |
-| `ppp_pac_diagnostic.csv` | derived — per-currency nuisance persistence (provenance of `pac1 = 0.27`) |
-| `boot_out/calib/surface_ppp_boot.csv` | output — the applied calibration (Table 8; `pac1 = 0.27` family) |
-| `boot_out/empirical/ppp_empirical.csv` | output — per-currency verdicts with p-values (Table 7; sieve-own CVs) |
-| `boot_out/sensitivity/` | output — nuisance / seed / λ-exact sensitivities behind the Table-7 boundary note (see its `README.md`) |
-| `modulus_table.csv`, `modulus_table_T52.csv`, `modulus_table_small.csv` | output — `modulus_numerics.py`'s empirical modulus `M_T(h)`, the observable implication of Theorem S2.1 (full grid; the `T=52` cell; a quick-test subset) |
-| `ppp_two_axis_results.csv`, `tab_ppp_three_columns.tex` | output — `ppp_two_axis_columns.py --validate --nrep 50000`'s validated run: the two-axis decomposition backing column (N) plus the full comparison against the published Table 6 |
-
-Figure PDFs and the `hl_results*.csv` / `power_comparison.csv` /
-`limiting_density.csv` files are **generated on demand** (git-ignored).
+Every path resolves through `src/mlb/paths.py`; no file computes its own path,
+and no door takes a free `--outdir`. `--full` writes only under `output/`,
+never into `inputs/` or `output/golden/`.
 
 ---
 
 ## Reproduce the paper
 
-Each driver has `--full` (paper numbers) and `--quick` (smoke test). Sections
-5–6 and the figures read the calibration surface from §3–4.
+One entry point. `--quick` (default) reproduces each printed object from the
+shipped frozen inputs and golden artefacts; `--full` regenerates the
+regenerable-here objects (never the calibration surface, which is a frozen
+external input).
 
 ```bash
-# (1) §3–4  calibration surface                             [hours at --full]
-python replicate_section3_4.py --full --jobs -1             # -> cbar_surface.csv
-python select_ar_order.py --start 1973 --kmax 10            # -> ppp_ar_diagnostic.csv
-
-# (2) §5   robustness + power
-python replicate_section5.py all --outdir section5_out
-python size_power_cbar_comparison.py                        # -> tab_power.tex, power_comparison.csv
-
-# (3) §6   PPP application
-python pac_diagnostic.py                                    # -> ppp_pac_diagnostic.csv (pac1 provenance)
-python boot_ppp_cbar.py --full --empirical                  # -> boot_out/ (Tables 7-8; sieve-own CVs + p-values)
-python hl_median_unbiased.py --B 20000 --boot recursive --out hl_results.csv
-python hl_median_unbiased.py --B 20000 --boot wild      --out hl_results_wild.csv
-
-# (4) figures
-python overdetrend_power.py                                 # -> Figure_1.pdf (self-contained MC, <1 min)
-python materiality_figure.py                                # -> Figure_2.pdf (self-contained MC, <1 min)
-python replicate_section3_4.py --limiting-density           # -> limiting_density.csv (Fig S1 data)
-python generate_figures.py                                  # -> Figure_3, Figure_S1, Figure_S2 (+ legacy/)
-
-# (5) validate
-python reconcile_tables.py
-python reconcile_boot.py --boot-out boot_out
+python replicate.py                       # every door, --quick (fast)
+python replicate.py cv                     # sec:calibration/cv/shortcuts
+python replicate.py robustness --full      # regenerate tab:ar1-sizepower + stab:recal
+python replicate.py ppp                    # sec:empirical
+python replicate.py supplement             # appendix S
+python replicate.py figures                # fig1..figS2
+python tests/run_all.py                    # invariance/convention gates
 ```
-
-> **Already have the calibration checkpoints?** Skip the multi-hour surface:
-> `python mlb_core.py --post --outdir <checkpoints_dir>` re-aggregates them into
-> `cbar_surface.csv` in seconds.
 
 ### Exhibit map
 
-| Exhibit | Command | Artifact |
+| Exhibit (label) | Door | Frozen artefact |
 |---|---|---|
-| **Table 1–2** c̄ surface & CVs | `replicate_section3_4.py --full` | `cbar_surface.csv` |
-| **Table 3** size / power | `size_power_cbar_comparison.py` | `tab_power.tex` |
-| **Table 4–5** AR(1) size/power, recalibration | `replicate_section5.py ar1 --recalibrate` | `robustness_out/` |
-| **Table 6** break dates | *(input)* | `exog_dates.csv` |
-| **Table 7–8** PPP verdicts & applied calibration | `boot_ppp_cbar.py --full --empirical` | `boot_out/` |
-| **Table 9** half-lives | `hl_median_unbiased.py --boot wild` | `hl_results_wild.csv` |
-| **Fig 1** over-detrending power loss | `overdetrend_power.py` | `Figure_1.pdf` |
-| **Fig 2** empirical size at `c̄=-7` | `materiality_figure.py` | `Figure_2.pdf` |
-| **Fig 3** real exchange rates | `generate_figures.py --only fig3` | `Figure_3.pdf` |
-| **Fig S1** limiting null law | `replicate_section3_4.py --limiting-density` → `generate_figures.py --only figS1` | `Figure_S1.pdf` |
-| **Fig S2** half-life forest | `hl_median_unbiased.py …` → `generate_figures.py --only figS2` | `Figure_S2.pdf` |
-| *legacy* the `c̄(m,T)` surface | `generate_figures.py --only legacy-cbarsurface` | `legacy_figures/Figure_legacy_cbar_surface.pdf` |
-| *legacy* old power-curve comparison | `size_power_cbar_comparison.py` → `generate_figures.py --only legacy-power` | `legacy_figures/Figure_legacy_power_comparison.pdf` |
+| `tab:cbar` c̄ surface | `replicate.py cv` | `output/golden/printed_tables/tab_cbar_mT.tex` |
+| `tab:cv` critical values (printed MZt 5%) | `replicate.py cv` | `output/golden/critical_values/tabcv_reconciliation.csv` |
+| `tab:cv` full M-class percentiles (1/2.5/5/10% × P_T,MZα,MSB,MZt,MPT) | `replicate.py cv --full` | `output/golden/critical_values/tabcv_full_percentiles.csv` |
+| `tab:power` size/power | `replicate.py cv` | `output/golden/critical_values/tabpower_runC.json` |
+| `tab:ar1-sizepower` AR(1) size/power | `replicate.py robustness [--full]` | `output/golden/calibration_robustness/ar1_size_power.csv` |
+| `stab:recal` recalibration | `replicate.py robustness [--full]` | `output/golden/calibration_robustness/ar1_recalibration.csv` |
+| `tab:dates` break dates | *(input)* | `inputs/exog_dates.csv` |
+| `tab:ppp` PPP verdicts | `replicate.py ppp` | `output/golden/bootstrap_empirical/ppp_empirical.csv` |
+| `tab:hl` half-lives | `replicate.py ppp` | `output/golden/bootstrap_empirical/hl_results_wild.csv` |
+| `tab:pppsurface` applied calibration | `replicate.py ppp` | `output/golden/bootstrap_empirical/tab_pppsurface.tex` |
+| `stab:objects` / `stab:disp` modulus | `replicate.py supplement` | `output/golden/supplement_appendix/modulus_feasible_*.csv` |
+| `stab:disp/L_T` displacement ladder | `replicate.py supplement` | `output/golden/supplement_appendix/g36_ladder.json` |
+| `fig:overdetrend` (Figure 1) / `fig:size` (Figure 2) | `replicate.py cv --full` | regenerated (self-contained MC); data == `tab:power` |
+| `fig:rerseries` / `sfig:density` / `sfig:forest` | `replicate.py figures` | regenerated from the shipped CSVs |
 
 ---
 
@@ -238,19 +162,17 @@ python reconcile_boot.py --boot-out boot_out
 |---|---|---|
 | **BIS** | bilateral USD nominal exchange rates (`WS_XRU`, annual) | [data.bis.org](https://data.bis.org) (bulk `WS_XRU_csv_flat.zip`) |
 | **World Bank** | Consumer Price Index (`FP.CPI.TOTL`, 2010 = 100) | World Bank Indicators API |
-| **Central banks / G-5** | exogenous regime break dates (Plaza, ERM exits, floats) | primary sources, cited in `exog_dates.csv` |
+| **Central banks / G-5** | exogenous regime break dates (Plaza, ERM exits, floats) | primary sources, cited in `inputs/exog_dates.csv` |
 
-`python replicate_section6.py sweep --fetch` rebuilds the panel from these
-public sources.
+The panel is rebuildable from these public sources; terms and the exact series
+identifiers are in `inputs/DATA_TERMS.md`.
 
 ---
 
 ## Admissible universe: attrition cascade
 
 The paper states the five admissibility conditions and the eight admitted
-currencies (§6.1); the full attrition arithmetic — reproduced by
-`ppp_sweep_bis.py` from the public BIS bulk export and the World Bank CPI
-API — lives here.
+currencies (§6.1); the full attrition arithmetic lives here.
 
 A currency `i` belongs to the admissible universe `U` iff it satisfies
 
@@ -300,111 +222,71 @@ conclusion.
 
 ## Monte Carlo design
 
-The calibration surface `c̄(m,T)` (Table 1) and every critical value behind
-it are located by the tangency procedure implemented in
-`replicate_section3_4.py`. The paper (§4) states only the essential design
-parameters and points here for the full procedural detail.
+The finite-sample optimum `c̄(m,T)` and the critical values behind it are located by a
+single tangency procedure applied identically to every cell. The design is anchored on the
+demeaned ERS constant: the paper proves the tangency has the form
+`c̄*(m,T,λ) = c̄_∞ + Δ_T` with `c̄_∞ = −7` and `Δ_T = O((m+1)/T)`, so the detrending target
+is flat at −7 and the finite-sample table records only the `Δ_T` departure, largest at the
+shortest spans (up to `(m+1)/T ≈ 0.10`).
 
-**Grid.** Sample sizes `T ∈ {30, 45, 50, 60, 80, 100, 150, 200, 300}` — the
-upper end matching Carrion-i-Silvestre, Kim & Perron (2009); the lower end
-covering the short cross-country panels the application motivates — and
-break counts `m ∈ {0, …, 5}`, with a minimum sample size imposed per `m` so
-every regime contains enough observations. Break fractions sit on a grid in
-`[ε, 1−ε]` with trimming `ε = 0.15` and a minimum spacing of `0.15` between
-breaks.
+**Grid.** `T ∈ {30, 45, 50, 60, 80, 100, 150, 200, 300}` and `m ∈ {0,…,5}`, with a minimum
+sample size per `m` (`30,30,30,45,60,80` for `m=0,…,5`). Break fractions lie in `[ε,1−ε]`,
+trimming `ε = 0.15`, minimum spacing `0.15`. This enumerates to **418 break configurations
+for `m ≥ 1`**; the `m = 0` cell has no break locations and is a single refined search per
+`T` (9 cells).
 
-**Tangency search.** For each configuration and each candidate `c̄` on the
-evaluation grid `{−20, −19.5, …, −3}` (step 0.5): (i) `R_cv = 10,000`
-replications under the null (`c = 0`) of the local-to-unity DGP
-`y_t = Z_t'θ + u_t`, `u_t = (1 + c/T) u_{t−1} + ε_t`, deliver the 5% critical
-value of the point-optimal (`PT`) statistic, which rejects for small values;
-(ii) `R_pow = 5,000` replications under the local alternative *at* `c = c̄`
-deliver its rejection rate against that critical value; (iii) the
-`(c̄, power)` pairs are collected across the grid and the crossing of power
-0.50 is located by linear interpolation, reported with the delta-method
-standard error `se(c̄*) = se(power)/|slope|` (slope taken in the bracketing
-interval, `se(power) = √(0.5·0.5/R_pow)`). The criterion is power at the
-*single point* `c = c̄`, not average power over a grid of alternatives —
-averaging dilutes the objective with near-null alternatives at which no test
-has power and drives the selected `c̄` to the grid boundary.
+**Tangency search.** For each configuration and each candidate `c̄` on the grid
+`{−20,−19.5,…,−3}` (step 0.5): (i) `R_cv` replications under the null (`c=0`) of
+`y_t = Z_t'θ + u_t`, `u_t = (1+c/T)u_{t−1} + ε_t` (with `u_0 = 0`, i.e. `u_1 = ε_1`) give
+the 5% critical value of the point-optimal statistic; (ii) `R_pow` replications under the
+alternative at `c = c̄` give its rejection rate; (iii) the crossing of power 0.50 is located
+by linear interpolation, with delta-method standard error `se(c̄*) = se(power)/|slope|`,
+`se(power) = √(0.25/R_pow)`. The criterion is power at the single point `c = c̄`.
 
-Where the curve never crosses 0.50 within the grid — an issue only for the
-autoregressive-MAIC long-run-variance estimator at the shortest sample
-sizes — the search falls back to the grid value closest to 0.50 and flags
-the cell explicitly rather than reporting a false precision. In the
-production surface this fallback binds in 23 cells, all under MAIC at
-`T = 30` (1, 7, and 15 cells at `m = 0, 1, 2`): located values range from
-−13.5 to −20 with only four at the grid edge, and the power attained never
-exceeds 0.48 — the estimator, not the grid, is the binding constraint, so any
-edge truncation understates the degeneracy the flags record.
+**Replication counts.** The exploratory surface uses `R_cv = 10,000`, `R_pow = 5,000` (code
+defaults). The production surface the paper prints uses **`R = 200,000` for `m ≥ 1` and a
+refined search at `R = 40,000` for `m = 0`**, both long-run-variance arms (a simple
+difference-based estimator and the autoregressive MAIC estimator of Perron & Ng). Precision
+is inherited by averaging over the break-fraction configurations within each `m ≥ 1` cell,
+and by the refined search for `m = 0`; the table reports a per-cell delta-method standard
+error. Treat the reported `se_cbar` as a lower bound on seed-to-seed uncertainty for
+`m ≥ 1`, not its sampling standard error.
 
-**Seed averaging for the `m = 0` cells.** Each `m ≥ 1` cell of the surface
-averages the interpolated tangency over the break-location configurations
-within the cell, so seed-level simulation noise is averaged away as a
-by-product. The `m = 0` cell has no break locations: a single tangency
-search is one draw of the located crossing, whose seed-to-seed standard
-deviation we measure at approximately 0.07 — about 2.5 times the
-delta-method standard error of a single refined search, which captures only
-the binomial noise of the power estimates around a fixed crossing, not the
-seed-to-seed scatter of the crossing's location. Left unaveraged, this
-scatter is large enough to displace individual `m = 0` cells by several
-tenths and to produce spurious non-monotonicities in `T`. The production
-design therefore repeats the entire `m = 0` calibration over `K = 20`
-independent pseudo-random streams — the seed offsets are multiples of
-`10^9`, exceeding the largest internal offset of a single calibration so
-that no two searches share a seed integer, each integer expanded through
-NumPy's `SeedSequence` entropy hashing before it initializes the generator,
-so the resulting streams are statistically independent — and reports the
-across-seed mean; the standard error attached to each `m = 0` cell is the
-across-seed standard deviation divided by `√K` (≈0.04 at `T = 30`, shrinking
-with `T`), which dominates and replaces the within-search delta-method
-figure. `python mlb_core.py --post` reproduces the entire surface, including
-the `m = 0` averaging and its aggregation, in a single deterministic run.
+**The MAIC short-T degeneracy.** Under the MAIC estimator at the shortest sample sizes the
+power curve can fail to reach 0.50 within the grid; across the twenty-three configurations
+where this binds the search reports the grid value closest to 0.50 and flags the cell,
+rather than reporting a false precision. The estimator, not the grid, is the binding
+constraint there.
 
-**Evaluation grid for the tangency.** The power curve from which `c̄*` is
-read — by the interpolation rule and delta-method standard error above — is
-traced on the grid `{−20, −19.5, …, −3}` in steps of 0.5. The grid serves
-only to bracket the crossing of 0.50 densely; `c̄*` itself is the
-interpolated crossing, not a grid point.
+**Long-run variance.** Both estimators are applied to the OLS-detrended series, not the raw
+series: the level dummies induce jumps in the raw first difference at the break dates. The
+MAIC lag order is selected on the OLS regression up to `k_max = 12`; the spectral density
+`s²` is then formed on the GLS-detrended residuals. (v1.3.1 formed `s²` on the OLS residuals
+and conflated the two Ng–Perron error variances; both are corrected in v2.0.0.)
 
-**Extension grid.** A targeted extension of the calibration grid to
-`T ∈ {400, 600}` for `m ∈ {4, 5}` — 22 additional configurations under the
-same seed policy and checkpointing — supports the intercept discussion in
-§4.2 of the paper (the `m = 4, 5` intercepts moving from −7.33 and −7.38 to
-−7.21 and −7.24). Its output is archived separately and does not enter the
-baseline surface.
+**Validation: the detrending value is flat at −7.** Fitting `c̄*(m,T)` in `1/T` for
+`T ≥ 100`, weighted by the inverse squared standard error of the mean across break
+configurations, returns an intercept `c̄_∞ ≈ −7` for every `m` alike, with a slope `a(m)`
+increasing in `m`.
 
-**Long-run variance.** Computed by two methods, both applied to the
-OLS-detrended series `y_t − Z_t'θ̂_OLS` rather than the raw series: a simple
-estimator that takes the sample variance of the first difference of the
-detrended series (consistent under the i.i.d. null, and equivalent to the
-autoregressive estimator with zero lags), and the autoregressive
-spectral-density estimator of Perron & Ng (1998) with MAIC lag selection
-(Ng & Perron 2001) up to `k_max = 12`. Detrending *before* estimating `s²`
-is essential: the level dummies induce jumps in the raw first difference at
-the break dates, so estimating `s²` from the undetrended series would
-contaminate it with the deterministic component. The paper reports the
-sensitivity of `c̄` and the critical values to the two methods. Full design
-parameters, seeds, and the raw per-replication vectors are archived to
-permit exact reproduction.
-
-**Total design size and replication counts elsewhere.** The grid above
-enumerates to **418 break configurations** across all `(m,T)` cells (the
-`m = 0` cell has no break locations and is instead seed-replicated, per
-above). The same `R_cv`/`R_pow` convention scales to the paper's other
-Monte Carlo exhibits:
+**Replication counts of the other Monte Carlo exhibits** (production values):
 
 | Object | Replications |
 |---|---|
-| Table 2 / Figure 1 (size-corrected power) | `N = 2 × 10⁵` |
-| Figure 2 (empirical size) | `2 × 10⁵` |
-| Table 3 (finite-sample critical values) | `4 × 10⁵` |
-| Table 6, columns (N) and (III) | `50,000`, configuration-derived seeds |
-| Half-life bootstraps (Table 8) | `B = 20,000` |
+| Finite-sample critical-value table (`tab:cv`, full M-class 1/2.5/5/10%, `c̄ = −7`) | `3,300,000` (K = 20 blocks × 165,000, CRN within a block. `cv --full` regenerates the whole table via the same block design; the printed values reproduce within twice the simulation standard error plus the two-decimal rounding half-width (the criterion the manuscript states)) |
+| Size-corrected power table (`tab:power`) | `320,000,000` null + `80,000,000` per power entry |
+| AR(1) size / power robustness (`tab:ar1-sizepower`) | `R_eval = 10,000` (i.i.d. anchor capped at 2,000) |
+| Recalibration dispersion (`stab:recal`) | `4,000` |
+| PPP verdicts and half-lives (`tab:ppp`, `tab:hl`) | sieve bootstrap `B = 19,999` per currency; half-life inversion at `nsim = 10⁶` |
+| Sieve bootstrap surface / empirical critical values | `R_cv = 10,000`, `R_pow = 5,000` / `R_cv = 20,000` |
+| Empirical modulus `M_T(h)` (`stab:objects`, `stab:disp`) | `200,000` |
+| Displacement ladder `L_T` (`stab:disp/L_T`) | `1,000,000` |
 
-The 1%, 2.5%, and 10% points, with Monte Carlo standard errors, for all five
-M-class statistics (`MZ_t`, `MZ_α`, `MSB`, `MPT`, `ADF-GLS`) are tabulated
-alongside the 5% points reported in the paper but were not printed there.
+Seeds are a pure function of the work item: each `(P,T,m,λ)` maps to a deterministic
+`config_seed` from `seed_base = 20240601`; replication `r` draws from
+`default_rng((seed0 + r) mod (2⁶³ − 1))`; the null stream is offset by `2·10⁶`. Parallelism,
+chunking, and resume are invisible in the output; the test suite verifies bit-identity
+across scheduling regimes.
 
 ---
 
@@ -419,129 +301,42 @@ alongside the 5% points reported in the paper but were not printed there.
   is identically independent of the break magnitudes, an implementation can
   be verified by generating the same innovation `u_t` and recomputing the
   statistic at `θ = 0` and at a large `θ`: the two must coincide to machine
-  precision. A nonzero discrepancy signals that the deterministic component
-  is not being removed exactly — the single most consequential coding error
-  possible here. We use this check rather than a sample variance of the
-  innovation, which is `O_p(1/T)` even under correct code and would raise
-  false alarms. A Monte Carlo verification across `m ∈ {0, 1, 2}` and `T` up
-  to 400, with `θ` ranging from zero through the large-shift class
-  `T^{1/2+η}`, confirms the invariance to **ten significant digits**; the
-  residual discrepancy in the most extreme cell is at the level of
-  floating-point cancellation, not of the invariance itself. Run via
-  `python mlb_core.py --selftest`.
+  precision. A Monte Carlo verification across `m ∈ {0, 1, 2}` and `T` up
+  to 400 confirms the invariance to **ten significant digits**. Run via
+  `python tests/run_all.py`.
 - Numba kernels are validated against `arch.DFGLS` to 10 decimals;
-  cross-platform bit-parity (Windows / Linux) is checked.
-- **No pandas** — all I/O uses the CSV standard library.
-- Provenance and the per-version changelog are in `CHANGELOG.md`; the
-  dependency / data flow is in `DEPENDENCY_GRAPH.md`.
-
-### Oracle recalibration (§5 robustness footnote)
-
-Substituting any deterministic divisor for the long-run-variance estimator
-cancels identically from the rejection rule
-(`N(c̄)/v < cv₅(c̄)/v ⟺ N(c̄) < cv₅(c̄)`). `robustness.py oracle` and the
-divisor-free (estimated-`s²`) tangency search share the same deterministic
-seed derivation (`_oracle_seed`, keyed only on `T`, `m`, `ρ`), so the two
-experiments are driven by bit-identical innovation draws: the oracle
-recalibration run confirms the cancellation to Monte Carlo seed identity —
-matching rejection decisions seed by seed, not just matching rejection
-rates. Output: `oracle_serial.csv` (`python robustness.py oracle`).
-
-### Lag-selection robustness (§6.2/§6.4 footnote)
-
-The paper's headline half-life table (Table 9) caps the AR order at
-`p ≤ 2` for every currency, selected by BIC on the Model LB (level-break)
-residual, common 1973–2024 (`T = 52`) sample. `select_ar_order.py`
-reproduces this and, as a robustness check on the same residual, also runs
-a general-to-specific sequential-*t* search (start at `k = kmax = 10`, drop
-the least significant lag at the 5% level until one survives):
-
-| Currency | BIC order | Sequential-*t* order |
-|---|---|---|
-| AUD | 1 | 2 |
-| CAD | 2 | 2 |
-| CHF | 1 | 1 |
-| GBP | 1 | **8** |
-| JPY | 1 | 1 |
-| NOK | 2 | 2 |
-| NZD | 1 | 1 |
-| SEK | 2 | 2 |
-
-Seven of the eight currencies select an order at or below the `p ≤ 2`
-headline cap under both rules; the pound is the outlier, where the
-sequential-*t* rule selects `k = 8` — the excessive lag count short-span
-sequential rules are known to be prone to. Unit-root verdicts are
-unaffected by the choice of rule (Table 7); the disagreement bears only on
-the half-life estimate (Table 9). Full diagnostic, both the constant-mean
-and level-break specifications, both rules:
-`ppp_ar_diagnostic.csv` (`python select_ar_order.py --start 1973 --kmax 10`).
-
-### Applied nuisance calibration (§6 footnote)
-
-`boot_ppp_cbar.py`'s **surface** calibration draws the AR(`p`) coefficient
-*family* afresh each replication: the first partial autocorrelation is fixed
-at `--pac1` (default **0.27**, the median first-lag ADF coefficient of the
-eight residual series at their selected orders; provenance in
-`pac_diagnostic.py`), higher-order coefficients drawn uniform on `[-0.3,
-0.3]`. Each currency's **empirical critical value** is instead *sieve-own*:
-simulated under that currency's own fitted AR(`p̂`) coefficients, held fixed
-across replications and seeded by the full configuration (break dates, break
-count, AR order, short-run dynamics) — so the critical value is a property
-of the configuration, not of the currency label. `--common-nuisance`
-reproduces the family design for the empirical block as a sensitivity,
-archived under `boot_out/sensitivity/`.
-
-The surface tabulates a `p = 4` cell that no admitted currency needs; it
-moves in the *opposite* direction from `p = 1, 2`, landing 1.35 beyond the
-i.i.d. value — a reminder that the family design's monotonicity in `p` is
-local, not global. A dedicated tangency search at the *exact* empirical break
-fractions (the `--bp` flag), rather than the `λ`-averaged cell the surface
-ships, moves `c̄*` by −0.26 (`p = 1`) and −0.90 (`p = 2`) at a feasible-power
-cost of 0.03–0.04; size is unaffected by construction. This exact-fraction
-displacement is archived under `boot_out/sensitivity/`
-(`lambda_exact_bp12_19.md`) alongside the seed- and design-sensitivity CSVs.
+  bit-identity across scheduling regimes (`--jobs`, chunking) is checked by
+  `tests/test_njobs_invariance.py` / `tests/test_chunk_invariance.py`.
+- The analytic invariances (θ-invariance, the Perron–Qu `k=0` convention,
+  chunk- and `--jobs`-invariance) anchor the kernel; the package ships one
+  kernel by design, so there is no second-implementation equivalence test.
+- Provenance and the per-version changelog are in `CHANGELOG.md`.
 
 ### Half-life bootstrap schemes (§6.4 footnote)
 
-`hl_median_unbiased.py` reports two interval schemes for the median-unbiased
-(Andrews–Chen) half-life estimator, both at `B = 20,000`:
+`hl_median_unbiased` (the `bootstrap_empirical` door) reports two interval
+schemes for the median-unbiased (Andrews–Chen) half-life estimator, both at
+`B = 19,999`, with the half-life inversion at `nsim = 10⁶`:
 
 - **Grid-*t* bootstrap** (Hansen 1999), valid uniformly in `α` including the
-  unit-root neighborhood (Mikusheva 2007). The `t`-statistic's acceptance
-  region is inverted on a grid refined to step **0.005** near the unit root,
-  so the finite/infinite classification of the upper confidence limit is
-  stable in the number of bootstrap replications.
+  unit-root neighborhood (Mikusheva 2007), inverted on a grid refined to step
+  **0.005** near the unit root.
 - **Recursive residual bootstrap** — the design-consistent baseline under the
   conditional-homoskedasticity gate (C4).
-- **Heteroskedasticity-robust wild bootstrap** — Rademacher multipliers,
-  `e*_t = ê_t · η_t` at the aligned residual position, in the fixed-design
-  construction of Cavaliere and Taylor (2008) for the unit-root neighborhood.
-  This is the scheme reported in Table 9.
+- **Heteroskedasticity-robust wild bootstrap** — Rademacher multipliers in the
+  fixed-design construction of Cavaliere and Taylor (2008). This is the scheme
+  reported in the half-life table.
 
-The two schemes agree under homoskedasticity by construction; the two Nordic
-interval collapses (Table 9) are invariant to the scheme and stable in the
-replication count. Medians are computed from unrounded estimates; the
-impulse-response half-life (first crossing of 0.5) falls within one year of
-the scalar figure throughout.
+### Cross-sectional dependence (§6.3 footnote)
 
-### Table 6 validation gate (§S2 footnote)
-
-`ppp_two_axis_columns.py --validate` reconciles every deterministic quantity
-(`MZt` (II)/(III)) and the one genuinely Monte Carlo quantity (`cv` (III),
-`pval` (III)) it computes against the archived production values of Table 6,
-before the module will emit column (N). Columns (N) and (III) are simulated
-under **common random numbers**, so any discrepancy is attributable to `c̄`
-alone, not to independent simulation error.
-
-`python ppp_two_axis_columns.py --validate --nrep 50000` returns
-`[OK] reproduction accepted`: all 32 comparisons (8 currencies × 2 columns ×
-2 quantities) pass — the 16 deterministic `MZt` values to two-decimal
-rounding (worst `|diff| = 0.004`, `TOL_STAT = 0.02`), `cv` (III) with
-`|diff|` in `[0.001, 0.022]` (`TOL_CV = 0.04`), `pval` (III) within `0.008`.
-`_test_kernel_equivalence` additionally locks the statistic to
-`mlb_core.mstats_nb` at `1e-8` whenever the kernel is importable. See
-`CHANGELOG.md` §`[1.3.1]` for the root-cause history behind the two fixes
-this gate required.
+The Pesaran (2004, 2015) CD statistic on the eight univariate Model LB
+residuals rejects cross-sectional independence in both levels (+14.04) and
+first differences (+8.65); the drop indicates contemporaneous dependence
+rather than a common trend. This dependence is priced into the §6.3
+rejection-count argument with a one-factor equicorrelated Gaussian
+approximation at mean pairwise correlations 0.37–0.41, raising the probability
+of zero rejections under `H1`-throughout from **0.006** (independence) to
+**0.09–0.10** (`supplement` door).
 
 ### External reference implementation
 
@@ -550,35 +345,6 @@ Carrion-i-Silvestre, Kim & Perron's publicly archived GAUSS library,
 dispatches the slope-only and level-and-slope specifications to the same
 response-surface procedure — corroborating on the implementation side the
 cancellation result behind Model LB's no-trend restriction.
-
-### Pesaran CD statistic — pairwise breakdown (§6.3 footnote)
-
-`pesaran_cd.py` on the eight univariate Model LB residuals, 1973–2024:
-
-| | Levels | First differences |
-|---|---|---|
-| CD statistic | +14.04 | +8.65 |
-| mean ρ̂ᵢⱼ (signed) | +0.368 | +0.229 |
-| mean \|ρ̂ᵢⱼ\| | 0.412 | 0.402 |
-| *p*-value | <0.0001 | <0.0001 |
-
-Both reject cross-sectional independence; the drop in the first-differenced
-statistic (still highly significant) indicates the dependence is
-contemporaneous rather than a common trend in levels. The gap between the
-signed and absolute means reflects 4 of the 28 currency pairs with negative
-residual correlation — AUD–CHF, CHF–GBP, CHF–NOK, GBP–JPY — three of which
-involve the Swiss franc; immaterial to the paper's argument, which turns on
-the sign of the positive mean correlation (the input to the §6.3
-dependence-adjusted probability bound, `dependence_bound.py`), not its
-magnitude. Reproduce: `python pesaran_cd.py --start 1973` (levels) and
-`--difference` (first differences).
-
-`dependence_bound.py` prices this dependence into the §6.3 rejection-count
-argument with a one-factor equicorrelated Gaussian approximation at mean
-pairwise correlations 0.37–0.41 (the levels/differences range above),
-raising the probability of zero rejections under `H1`-throughout from
-**0.006** (independence) to **0.09–0.10**; `dependence_count_pmf.py` gives
-the full rejection-count PMF by exact enumeration.
 
 ---
 
@@ -610,12 +376,8 @@ are redistributed under their original terms (BIS terms of use; World Bank CPI
 under CC-BY-4.0); see the data-source notes above.
 
 **Harvard Dataverse deposit.** The data-only Dataverse deposit ("Replication
-Data for: ...") takes a single license/terms selection for the whole dataset,
-separate from this repository's split MIT (code) / CC-BY-4.0 (World Bank CPI)
-/ BIS terms-of-use (BIS rates) scheme. Both upstream sources require
-attribution on redistribution — World Bank data is explicitly CC-BY-4.0, and
-the BIS terms of permitted use require citing the BIS as the source — so
-**CC0** (a public-domain dedication with no attribution requirement) is not a
-correct choice for that deposit's terms; it conflicts with the attribution
-language already in this README and in the data notice at the foot of
-`LICENSE`. Set the Dataverse dataset's terms to **CC BY 4.0** to match.
+Data for: ...") takes a single license/terms selection for the whole dataset.
+Both upstream sources require attribution on redistribution — World Bank data
+is explicitly CC-BY-4.0, and the BIS terms of permitted use require citing the
+BIS as the source — so **CC0** is not a correct choice for that deposit's
+terms; set the Dataverse dataset's terms to **CC BY 4.0** to match.

@@ -1,0 +1,18 @@
+{
+ "printed_object": "tab:cbar",
+ "artefact": "output/golden/printed_tables/tab_cbar_mT.tex",
+ "sha256": "1d76375a60dc37300fbc8e60d859a71a91f15368a896dc1e9624b4218b8a3d27",
+ "producer": "section_replications/tabcbar_producer.py",
+ "producer_note": "the single clean numba-only producer; consolidates the former three-file chain (tools/regen_surface_maic.py + tools/aggregate_o61_surface.py + tools/regen_printed_tables.py). One convention for every row m=0..5, no m=0/m>=1 split.",
+ "source": "cbar_surface.csv (const arm)",
+ "convention": "c-bar(m,T) = interpolated tangency of the ERS/CKP point-optimal power=0.50 crossing; printed cell = mean of cbar_otimo over the enumerated lambda configs (1/7/15/20/5/6 for m=0..5), round 1 decimal; m=0 by the single-seed calibrate_config_sigma path (NOT the K=20 wrapper), R_cv=R_pow=200,000 (m=0 refine pass at 40,000).",
+ "validation": {
+  "kind": "bit-identical reproduction of the frozen surface",
+  "tool": "tools/validate_tabcbar.py",
+  "report": "refactor/audit/tabcbar_validation.json",
+  "commit": "23c80e1",
+  "result": "16/16 sampled cells exact, max|producer-frozen|=0.000e+00, 0 cfg_seed mismatches, 0 printed-digit moves",
+  "coverage": "m in {0,1,2,3,4,5}, T in {30,60,80,100,150,200,300}, the m=2 15-config and m=3 20-config cells, the single-seed m=0 refine path, the full T>=100 fit band"
+ },
+ "note": "The prior shared manifest printed_tables/regen_printed_tables.manifest.json (old producer regen_printed_tables.py) stays in printed_tables/ as a legacy record, archived at Fase C. This manifest supersedes it for tab:cbar."
+}

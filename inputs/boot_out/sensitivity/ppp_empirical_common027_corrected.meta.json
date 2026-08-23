@@ -1,0 +1,128 @@
+{
+ "kernel": "mlb_core (C:\\Users\\SAMSUNG\\OneDrive\\Documents\\Articles\\GLS_LB\\Replication\\V_Pub_refactor\\mlb_core.py)",
+ "params": {
+  "cbar_grid": [
+   -20.0,
+   -19.5,
+   -19.0,
+   -18.5,
+   -18.0,
+   -17.5,
+   -17.0,
+   -16.5,
+   -16.0,
+   -15.5,
+   -15.0,
+   -14.5,
+   -14.0,
+   -13.5,
+   -13.0,
+   -12.5,
+   -12.0,
+   -11.5,
+   -11.0,
+   -10.5,
+   -10.0,
+   -9.5,
+   -9.0,
+   -8.5,
+   -8.0,
+   -7.5,
+   -7.0,
+   -6.5,
+   -6.0,
+   -5.5,
+   -5.0,
+   -4.5,
+   -4.0,
+   -3.5,
+   -3.0
+  ],
+  "target_power": 0.5,
+  "kmax": 12,
+  "seed_base": 20240601,
+  "R_cv": 10000,
+  "R_pow": 5000,
+  "R_cv_emp": 20000,
+  "trim": 0.15,
+  "min_spacing": 0.15,
+  "n_grid": 7,
+  "pac1": 0.27,
+  "pac_hw": 0.3,
+  "burn": 100
+ },
+ "cells": [
+  [
+   2,
+   52,
+   0,
+   "maic"
+  ],
+  [
+   2,
+   52,
+   0,
+   "const"
+  ],
+  [
+   2,
+   52,
+   1,
+   "maic"
+  ],
+  [
+   2,
+   52,
+   2,
+   "maic"
+  ],
+  [
+   2,
+   52,
+   4,
+   "maic"
+  ]
+ ],
+ "placeholder_breaks": [
+  1973,
+  1985
+ ],
+ "start_year": 1973,
+ "T_emp": 52,
+ "inputs": {
+  "panel": "83da59d35364",
+  "diagnostic": "ed66d04a3f8f"
+ },
+ "args": {
+  "mc_dir": ".",
+  "out": "boot_sens_common_corrected",
+  "emp_dir": ".",
+  "quick": false,
+  "full": false,
+  "hi": false,
+  "raw": false,
+  "empirical": true,
+  "m3": false,
+  "grid": false,
+  "m": 2,
+  "T": 52,
+  "start_year": 1973,
+  "p": 1,
+  "nrep": null,
+  "n_jobs": -1,
+  "kmax": 12,
+  "pcells": [
+   0,
+   1,
+   2,
+   4
+  ],
+  "pac1": 0.27,
+  "pac_hw": 0.3,
+  "seed_base": 20240601,
+  "common_nuisance": true,
+  "bp": null
+ },
+ "seconds_total": 22.2,
+ "timestamp": "2026-08-18 13:58:44"
+}

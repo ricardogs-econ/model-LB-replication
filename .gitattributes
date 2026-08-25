@@ -1,0 +1,3 @@
+# Normalize line endings: store text as LF in the repo, stop CRLF churn on the
+# Windows/OneDrive checkout. Git auto-detects binary files and leaves them alone.
+* text=auto eol=lf

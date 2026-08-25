@@ -38,7 +38,7 @@
     "note": "sieve-bootstrap PPP surface (m=2,T=52); the frozen source rendered into tab:pppsurface"
   },
   "OBJECT_MAP.csv": {
-    "sha256": "7415a2a21d1248a45a4b0b2ee47c8a752b28b96feecd07bf25bb122411b434a6",
+    "sha256": "3371f9d776f6763067623b64855482b73eb596c6bda95ee27655d27aa1ebfcea",
     "provenance_class": "reproduction_map",
     "regenerable_here": false,
     "note": "number -> producer -> artefact -> digest, the machine-readable reproduction map (18 objects, incl. tab:cv-full full M-class percentile table)"

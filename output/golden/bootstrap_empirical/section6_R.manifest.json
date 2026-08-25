@@ -14,11 +14,12 @@
    "outputs": ["boot_out/calib/surface_ppp_boot.csv", "boot_out/empirical/ppp_empirical.csv", "boot_out/calib/delta_cbar_with_without_AR.csv"]
   },
   "hl": {
-   "invocation_MP_baseline": "replicate_section6.py hl (default --boot recursive) -> hl_results.csv",
-   "invocation_LB_reported": "replicate_section6.py hl --boot wild -> hl_results_wild.csv",
-   "note": "The printed tab:hl LB CI is the WILD bootstrap; the shipped default is recursive -- see refactor/39.",
-   "wall_s": "~12-32 per scheme",
-   "gitignored": true
+   "invocation_MP_baseline": "hl_median_unbiased.py --boot recursive -> hl_results.csv",
+   "invocation_LB_reported": "hl_median_unbiased.py --boot wild -> hl_results_wild.csv",
+   "note": "The printed tab:hl LB CI is the WILD bootstrap; the recursive file is the MP baseline.",
+   "wall_s_ORIGINAL_v2_0_0": "~12-32 per scheme -- REVEALS the v2.0.0 goldens were minted at a MODEST N (~nsim 1e4), NOT production; superseded.",
+   "RE_MINTED_v2_0_1": "Both goldens re-minted at the DOCUMENTED PRODUCTION N (nsim=1e6, B=19999, seed 20260704, ~40 min/scheme). See hl_results_wild.manifest.json and hl_results.manifest.json for full provenance. This is what makes --full reproduce --quick and the package match the paper (median MP HL 7.2, JPY LB CI [2.2,34.3]). Classifications unchanged (3 collapses, includes_one, JPY scheme dependence).",
+   "gitignored_raw": true
   },
   "sweep": {
    "invocation": "ppp_sweep_bis.py --fetch --exog exog_dates.csv --out ppp_sweep --c4-mode both",

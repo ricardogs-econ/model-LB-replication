@@ -1,0 +1,50 @@
+{
+ "statement": "Pi^T_lambda decreases strictly from node to node on the grid of step 0.5 over K = [-20, -3] in every configuration of the trimming and Proposition 1 lattices that is not in Table 1; where a half-power point is computed it is the unique root of Pi^T_lambda = 1/2 on the grid (the totals over Section 4 are in envelope_monotonicity_section_4.json)",
+ "grid": {
+  "lo": -20.0,
+  "hi": -3.0,
+  "step": 0.5,
+  "n_nodes": 35
+ },
+ "n_configurations": 206,
+ "configurations_by_T": {
+  "52": 23,
+  "60": 124,
+  "100": 36,
+  "400": 23
+ },
+ "configurations_by_lattice": {
+  "proposition_1_i": 32,
+  "proposition_1_iii": 44,
+  "trimming:generator:0.1": 56,
+  "trimming:generator:0.2": 56,
+  "trimming:theory:0.1": 104,
+  "trimming:theory:0.2": 40
+ },
+ "n_strictly_decreasing": 206,
+ "all_strictly_decreasing": true,
+ "n_with_cbar_half": 204,
+ "n_cbar_half_in_bracket": 204,
+ "largest_difference": {
+  "value": -0.0013579902218125994,
+  "from_node": -20.0,
+  "config_key": "T400_m0_lambdas_"
+ },
+ "largest_abs_pi_at_cbar_half_minus_half": {
+  "value": 1.4223252131628783e-08,
+  "config_key": "T100_m2_lambdas_0.4_0.7"
+ },
+ "smallest_pi_at_minus20": 0.8788234929846612,
+ "largest_pi_at_minus3": 0.18319755229292556,
+ "shared_with_table_1": {
+  "n_configurations": 86,
+  "n_half_power_points": 101,
+  "n_in_table_1_bracket": 101
+ },
+ "pi_at_minus7_against_proposition_1": {
+  "n": 64,
+  "n_not_scanned": 0,
+  "max_abs_difference": 0.0,
+  "agree": true
+ }
+}

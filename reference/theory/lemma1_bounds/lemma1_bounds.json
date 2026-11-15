@@ -1,0 +1,100 @@
+{
+ "statement": "Lemma 1 (lem:design): eqs. qd-step, Gram-exact, Gram-qd and Gram-bounds, with proof steps (a)-(e) of supplement S2",
+ "arithmetic": "exact rational (fractions.Fraction); spectral-norm bounds decided by positive definiteness of x I -/+ D",
+ "designs": {
+  "n": 3004,
+  "n_fixed": 4,
+  "n_random": 3000,
+  "seed": 20261011,
+  "generator": "random.Random(seed).random()",
+  "T_range": [
+   2,
+   60
+  ],
+  "m_max": 5,
+  "cbar_values": [
+   "-3",
+   "-7",
+   "-20",
+   "-1/3",
+   "-13/2"
+  ],
+  "fixed": [
+   {
+    "T": 2,
+    "tau": [
+     1
+    ],
+    "cbar": "-7"
+   },
+   {
+    "T": 6,
+    "tau": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "cbar": "-20"
+   },
+   {
+    "T": 60,
+    "tau": [
+     1,
+     59
+    ],
+    "cbar": "-3"
+   },
+   {
+    "T": 2,
+    "tau": [],
+    "cbar": "-13/2"
+   }
+  ],
+  "count_by_m": {
+   "0": 488,
+   "1": 562,
+   "2": 524,
+   "3": 506,
+   "4": 474,
+   "5": 450
+  },
+  "count_by_cbar": {
+   "-3": 595,
+   "-7": 615,
+   "-20": 591,
+   "-1/3": 626,
+   "-13/2": 577
+  },
+  "sha256_of_list": "b2ac6d92b5c5232d470a2d5913229f12c37bb63be499056d3401d3c993aa02ea",
+  "list_format": "one line per design: T;tau_1 ... tau_m;cbar"
+ },
+ "checks": {
+  "qd_step": "z_jt = 1{t = tau_j + 1} - (cbar/T) 1{t > tau_j + 1} (eq. qd-step)",
+  "gram_exact": "(G_T)_jj = 1 + cbar^2 (T - tau_j - 1)/T^2, (G_T)_jk = -cbar/T + cbar^2 (T - tau_max(j,k) - 1)/T^2 (eq. Gram-exact)",
+  "expansion": "G_T - I - B/T in [-cbar^2/T^2, 0] entrywise and |B_jk| <= |cbar| + cbar^2, lambda_j T - tau_j in {0, 1/2, 999/1000} (eq. Gram-qd)",
+  "a_diagonal": "D_jj in [0, cbar^2/T), D_00 > 0 (proof step a)",
+  "b_offdiag": "D_jk in [|cbar|/T, (|cbar| + cbar^2)/T), j != k (proof step b)",
+  "c_trace": "0 < tr D < (m + 1) cbar^2/T (proof step c)",
+  "d_upper": "||D||_F <= (m + 1) max|D_jk| <= (m + 1)(|cbar| + cbar^2)/T and ||D|| <= (m + 1)(|cbar| + cbar^2)/T (proof step d)",
+  "e_lower": "v'Dv >= m|cbar|/T, e_0'De_0 = cbar^2 (T - 1)/T^2 and ||D|| >= max{m|cbar|, cbar^2 (1 - 1/T)}/T (proof step e)"
+ },
+ "expansion_shifts": [
+  "0",
+  "1/2",
+  "999/1000"
+ ],
+ "passed": {
+  "qd_step": 3004,
+  "gram_exact": 3004,
+  "expansion": 3004,
+  "a_diagonal": 3004,
+  "b_offdiag": 3004,
+  "c_trace": 3004,
+  "d_upper": 3004,
+  "e_lower": 3004
+ },
+ "failures": [],
+ "all_designs_pass": true
+}

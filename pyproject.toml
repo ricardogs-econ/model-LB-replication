@@ -1,0 +1,21 @@
+# Makes the package importable from any directory: `pip install -e .` in the
+# repository root (after `pip install -r requirements.txt`, the single list of
+# dependencies). Editable installs of a pyproject.toml project need pip >= 21.3 and
+# setuptools >= 64. Nothing is copied: the editable install points at this folder,
+# where the code reads inputs/ and reference/. A plain `pip install .` copies
+# model_lb and mlb into site-packages instead: `python -m model_lb` and the
+# functions of model_lb work from the copy, but the section scripts do not
+# (mlb/paths.py then looks for inputs/ in site-packages), and the copy does not
+# follow later edits of the repository.
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "model-lb-replication"
+version = "3.0.0"
+description = "Model LB unit-root test with known level breaks: replication package"
+requires-python = ">=3.10"
+
+[tool.setuptools]
+packages = ["model_lb", "mlb"]

@@ -1,0 +1,47 @@
+{
+ "statement": "Pi^T_lambda decreases strictly from node to node on the grid of step 0.5 over K = [-20, -3] in every configuration of the comparison of Section 4.2 that is not in Table 1 (the equispaced placements lambda_j = j/(m+1), m = 2, ..., 5), so the half-power point is the unique root of Pi^T_lambda = 1/2 on the grid",
+ "grid": {
+  "lo": -20.0,
+  "hi": -3.0,
+  "step": 0.5,
+  "n_nodes": 35
+ },
+ "n_configurations": 27,
+ "configurations_by_T": {
+  "45": 2,
+  "50": 2,
+  "60": 3,
+  "80": 4,
+  "100": 4,
+  "150": 4,
+  "200": 4,
+  "300": 4
+ },
+ "configurations_by_m": {
+  "2": 8,
+  "3": 8,
+  "4": 6,
+  "5": 5
+ },
+ "n_strictly_decreasing": 27,
+ "all_strictly_decreasing": true,
+ "n_with_cbar_half": 27,
+ "n_cbar_half_in_bracket": 27,
+ "largest_difference": {
+  "value": -0.003194524607566862,
+  "from_node": -20.0,
+  "config_key": "T300_m2_lambdas_0.333_0.667"
+ },
+ "largest_abs_pi_at_cbar_half_minus_half": {
+  "value": 1.4636247991361984e-08,
+  "config_key": "T80_m2_lambdas_0.333_0.667"
+ },
+ "smallest_pi_at_minus20": 0.8412392407337668,
+ "largest_pi_at_minus3": 0.17301637087796534,
+ "rule_comparison": {
+  "n_configurations": 78,
+  "n_in_table_1": 51,
+  "n_not_in_table_1": 27,
+  "n_cbar_half_equal_to_table_1": 51
+ }
+}

@@ -1,0 +1,219 @@
+{
+ "ar1_recalibration": {
+  "rho_half": {
+   "largest_abs_delta": {
+    "T": 60,
+    "m": 2,
+    "value": 0.9756530403390133
+   },
+   "median_abs_delta": 0.5152283257452113,
+   "n": 6
+  }
+ },
+ "ar1_robustness": {
+  "maic_critical_values_T60_100_m_le_2": {
+   "distance": [
+    0.1500827697469287,
+    0.2177151471460923
+   ],
+   "distance_se": [
+    0.0015690575741186055,
+    0.001500328487164227
+   ],
+   "maic": [
+    -2.1745622764259194,
+    -1.9463135677336851
+   ],
+   "maic_se": [
+    0.0012903143588239604,
+    0.0016875025413627296
+   ],
+   "n": 6,
+   "tabcv": [
+    -2.388875,
+    -2.108321
+   ],
+   "tabcv_se": [
+    0.0007715867845529883,
+    0.0011410320297439807
+   ]
+  }
+ },
+ "maic_lag_zero": {
+  "maximum": {
+   "T": 80,
+   "m": 5,
+   "se": 0.0010218327077770326,
+   "value": 0.8811333333333332
+  },
+  "minimum": {
+   "T": 300,
+   "m": 0,
+   "se": 0.004520313152868946,
+   "value": 0.7137
+  },
+  "n_cells": 43
+ },
+ "rule_against_minus7": {
+  "c-10": {
+   "indistinguishable": 12,
+   "largest_advantage_of_minus7_pp": {
+    "T": 60,
+    "m": 4,
+    "se": 0.2133219397999177,
+    "value": 5.4655000000000005
+   },
+   "largest_gain_of_the_rule_pp": {
+    "T": 300,
+    "m": 0,
+    "se": 0.02739916578500669,
+    "value": -0.0004999999999921734
+   },
+   "minus7_ahead": 66,
+   "rule_ahead": 0,
+   "smallest_power_of_minus7": {
+    "T": 45,
+    "m": 3,
+    "se": 0.0027212648057212555,
+    "value": 0.39131
+   }
+  },
+  "c-15": {
+   "indistinguishable": 12,
+   "largest_advantage_of_minus7_pp": {
+    "T": 60,
+    "m": 4,
+    "se": 0.19077950998094953,
+    "value": 4.261999999999999
+   },
+   "largest_gain_of_the_rule_pp": {
+    "T": 100,
+    "m": 1,
+    "se": 0.06498681184891053,
+    "value": 0.40450000000000763
+   },
+   "minus7_ahead": 30,
+   "rule_ahead": 36,
+   "smallest_power_of_minus7": {
+    "T": 45,
+    "m": 3,
+    "se": 0.0025630785061272424,
+    "value": 0.63227
+   }
+  },
+  "c-20": {
+   "indistinguishable": 5,
+   "largest_advantage_of_minus7_pp": {
+    "T": 60,
+    "m": 4,
+    "se": 0.15904851012011612,
+    "value": 0.7935000000000025
+   },
+   "largest_gain_of_the_rule_pp": {
+    "T": 100,
+    "m": 3,
+    "se": 0.05290246735863596,
+    "value": 1.2464999999999948
+   },
+   "minus7_ahead": 6,
+   "rule_ahead": 67,
+   "smallest_power_of_minus7": {
+    "T": 60,
+    "m": 4,
+    "se": 0.002092353425485971,
+    "value": 0.79352
+   }
+  },
+  "c-5": {
+   "indistinguishable": 11,
+   "largest_advantage_of_minus7_pp": {
+    "T": 60,
+    "m": 4,
+    "se": 0.10604343697898412,
+    "value": 3.0134999999999996
+   },
+   "largest_gain_of_the_rule_pp": {
+    "T": 300,
+    "m": 0,
+    "se": 0.024786190977193225,
+    "value": -0.004500000000001725
+   },
+   "minus7_ahead": 67,
+   "rule_ahead": 0,
+   "smallest_power_of_minus7": {
+    "T": 45,
+    "m": 3,
+    "se": 0.0017071854447766204,
+    "value": 0.175905
+   }
+  },
+  "classes": {
+   "-7 better": 42,
+   "X better": 6,
+   "indistinguishable": 30
+  },
+  "kinds": {
+   "equispaced": 43,
+   "lambda_ext": 35
+  },
+  "largest_advantage_of_minus7_pp": {
+   "T": 60,
+   "kind": "equispaced",
+   "m": 4,
+   "se": 0.16128523286180246,
+   "value": 3.383625000000001
+  },
+  "largest_gain_of_the_rule_pp": {
+   "T": 300,
+   "kind": "lambda_ext",
+   "m": 3,
+   "se": 0.0439831756111599,
+   "value": 0.15662500000001023
+  },
+  "n_cells": 78
+ },
+ "surface": {
+  "largest_displacement_from_minus7": {
+   "T": 60,
+   "m": 4,
+   "value": 3.521680317951196
+  },
+  "minimum": {
+   "T": 60,
+   "m": 4,
+   "value": -10.521680317951196
+  },
+  "n_configurations": 404,
+  "r_squared_of_the_cell_means": 0.9837690775245077
+ },
+ "tabcv_blocks": {
+  "interpolation_in_1_over_T_leaving_one_T_out": {
+   "T": 100,
+   "largest_abs_error": 0.009550101469639749,
+   "largest_abs_error_se": 0.001077755037791906,
+   "m": 5,
+   "n": 31
+  }
+ },
+ "within_cell_dispersion": {
+  "agrees_with_the_surface": {
+   "counts_equal": true,
+   "max_abs_difference_of_means": 1.7763568394002505e-15,
+   "max_abs_difference_of_ranges": 0.0
+  },
+  "largest_range": {
+   "T": 60,
+   "m": 2,
+   "value": 0.540445760953931
+  },
+  "mean_range": 0.31211056028886447,
+  "mean_sd_ddof1": 0.0990560538308428,
+  "n_cells": 43,
+  "n_cells_with_several_configurations": 35,
+  "smallest_range": {
+   "T": 300,
+   "m": 5,
+   "value": 0.06870979059689741
+  }
+ }
+}

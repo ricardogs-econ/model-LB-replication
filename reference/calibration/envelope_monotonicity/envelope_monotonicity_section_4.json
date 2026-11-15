@@ -1,0 +1,68 @@
+{
+ "statement": "Pi^T_lambda decreases strictly from node to node on the grid of step 0.5 over K = [-20, -3] in every design at which Section 4 of the article computes the envelope: Table 1 (envelope_monotonicity.json), the trimming and Proposition 1 lattices of Section 4.1 (envelope_monotonicity_lattices.json) and the equispaced placements of the comparison of Section 4.2 that are not in Table 1 (envelope_monotonicity_rule.json); every half-power point computed there lies between the two nodes that bracket Pi = 1/2, so it is the unique root of Pi^T_lambda = 1/2 on the grid",
+ "design": "T and the break dates tau_j = floor(lambda_j T): configurations with the same design have the same regressors and the same envelope, and the design is counted once",
+ "grid": {
+  "lo": -20.0,
+  "hi": -3.0,
+  "step": 0.5,
+  "n_nodes": 35
+ },
+ "sources": {
+  "table_1": {
+   "n_configurations": 404,
+   "file": "envelope_monotonicity.json"
+  },
+  "trimming_and_proposition_1_lattices": {
+   "n_configurations": 206,
+   "file": "envelope_monotonicity_lattices.json",
+   "lattices": [
+    "proposition_1_i",
+    "proposition_1_iii",
+    "trimming:generator:0.1",
+    "trimming:generator:0.2",
+    "trimming:theory:0.1",
+    "trimming:theory:0.2"
+   ]
+  },
+  "rule_comparison_not_in_table_1": {
+   "n_configurations": 27,
+   "file": "envelope_monotonicity_rule.json"
+  }
+ },
+ "n_configurations": 637,
+ "n_designs": 634,
+ "n_designs_strictly_decreasing": 634,
+ "n_designs_with_cbar_half": 632,
+ "n_half_power_points": 635,
+ "n_cbar_half_in_bracket": 635,
+ "all_strictly_decreasing": true,
+ "same_design": [
+  {
+   "config_key": "T60_m1_lambdas_0.367",
+   "set": "trimming_and_proposition_1_lattices",
+   "same_design_as": "T60_m1_lambdas_0.383",
+   "same_design_as_set": "table_1",
+   "T": 60,
+   "break_dates": "22"
+  },
+  {
+   "config_key": "T60_m1_lambdas_0.633",
+   "set": "trimming_and_proposition_1_lattices",
+   "same_design_as": "T60_m1_lambdas_0.617",
+   "same_design_as_set": "table_1",
+   "T": 60,
+   "break_dates": "37"
+  },
+  {
+   "config_key": "T60_m2_lambdas_0.367_0.633",
+   "set": "trimming_and_proposition_1_lattices",
+   "same_design_as": "T60_m2_lambdas_0.383_0.617",
+   "same_design_as_set": "table_1",
+   "T": 60,
+   "break_dates": "22 37"
+  }
+ ],
+ "same_design_max_abs_pi_difference": 0.0,
+ "same_design_pi_agree": true,
+ "same_design_max_abs_cbar_half_difference": 0.0
+}

@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.nbc
+*.nbi
+
+# created by `pip install .` and `pip install -e .`
+*.egg-info/
+build/
+
+# everything a run writes
+/output/
+
+# environments / editors / OS
+venv/
+.venv/
+.vscode/
+.DS_Store
+Thumbs.db
+.ipynb_checkpoints/
+*.zip

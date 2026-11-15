@@ -1,0 +1,34 @@
+{
+ "statement": "Pi^T_lambda decreases strictly from node to node on the grid of step 0.5 over K = [-20, -3] in every configuration of the grid of Table 1, so the half-power point is the unique root of Pi^T_lambda = 1/2 on the grid",
+ "grid": {
+  "lo": -20.0,
+  "hi": -3.0,
+  "step": 0.5,
+  "n_nodes": 35
+ },
+ "n_configurations": 404,
+ "configurations_by_T": {
+  "45": 43,
+  "50": 43,
+  "60": 48,
+  "80": 54,
+  "100": 54,
+  "150": 54,
+  "200": 54,
+  "300": 54
+ },
+ "n_strictly_decreasing": 404,
+ "all_strictly_decreasing": true,
+ "n_cbar_half_in_bracket": 404,
+ "largest_difference": {
+  "value": -0.0016110488838190218,
+  "from_node": -20.0,
+  "config_key": "T300_m0_lambdas_"
+ },
+ "largest_abs_pi_at_cbar_half_minus_half": {
+  "value": 1.4969604500425504e-08,
+  "config_key": "T100_m2_lambdas_0.383_0.733"
+ },
+ "smallest_pi_at_minus20": 0.8407579769801945,
+ "largest_pi_at_minus3": 0.18414954838032516
+}

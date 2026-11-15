@@ -1,0 +1,3 @@
+quantity,scope,value,where
+max |cell mean + 7|,"T<=60, m<=3",3.230261056386462,"(m=3,T=45) mean=-10.230261056386462"
+max |cbar_half + 7|,"T<=60, m<=3",3.391482537314408,T45_m3_lambdas_0.15_0.35_0.65 cbar=-10.391482537314408

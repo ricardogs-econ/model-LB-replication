@@ -1,0 +1,35 @@
+label,value,printed,where
+n_series,9,nine,"supplement ssub:app-robust; article, robust level-shift sentence"
+level_percent,5,5,supplement ssub:app-robust
+cisg_m_max,5,five,supplement ssub:app-robust
+trimming,0.15,0.15,"supplement ssub:app-robust; article, robust level-shift sentence"
+hlt_window_authors,0.1,0.10,"supplement ssub:app-robust; article, robust level-shift sentence"
+cisg_union_rejections_10_or_5_both_strategies,0,none,supplement ssub:app-robust
+cisg_component_rejections_10_or_5_both_strategies,1,only one,supplement ssub:app-robust
+cisg_component_rejections,NOK one_at_time UDmax_0 10%,"the UDmax under I(0), for the Norwegian krone at 10%",supplement ssub:app-robust
+cisg_sequential_union_detections_both_strategies,0,none,supplement ssub:app-robust
+cisg_sequential_component_breaks,1,one,supplement ssub:app-robust
+cisg_sequential_component_detections,NOK one_at_time F_0 10% 2015,"the I(0) statistic detects one, for the Norwegian krone at 10% (2015, one-at-a-time strategy)",supplement ssub:app-robust
+hlt_candidate_fractions,0.15;0.85,"[0.15,0.85]",supplement ssub:app-robust
+hlt015_separation_obs,8,8,supplement ssub:app-robust
+hlt010_separation_obs,5,5,"supplement ssub:app-robust; article, robust level-shift sentence"
+hlt015_S1_rejections,SEK 1982,"only its S_1 component rejects, for the krona at 1982",supplement ssub:app-robust
+hlt015_S1_rejections_count,1,only,supplement ssub:app-robust
+hlt015_S0_rejections_count,0,only its S_1 component,supplement ssub:app-robust
+hlt015_S1_statistics,0.6851245646489608,not printed (the statistics of the rejecting S_1 components),supplement ssub:app-robust
+hlt015_S1_critical_value,0.679,not printed (the 5% critical value of S_1 at the window 0.15),supplement ssub:app-robust
+hlt015_series_with_U_break,0,no break,"supplement ssub:app-robust; article, robust level-shift sentence"
+hlt010_series_with_U_break,5,five,"supplement ssub:app-robust; article, robust level-shift sentence"
+hlt010_series_list,"CHF, DKK, GBP, NZD, SEK","CHF, DKK, GBP, NZD, SEK",supplement ssub:app-robust
+hlt010_DKK_tau,1982;1987,1982 and 1987,supplement ssub:app-robust
+min_regime_obs,8,8,supplement ssub:app-robust
+cisg_sequential_min_regime_obs,7,7,supplement ssub:app-robust
+event_year,1986,1986,supplement ssub:app-robust
+z_1986_JPY,-3.168162590247539,-3.17,supplement ssub:app-robust
+z_1986_CHF,-3.1331879798291515,-3.13,supplement ssub:app-robust
+z_1986_DKK,-3.0847887014524096,-3.08,supplement ssub:app-robust
+z_1986_AUD,-0.25212960560874836,-0.25,supplement ssub:app-robust
+z_1986_largest_abs,3.168162590247539,3 (JPY; 'about three'),"article, robust level-shift sentence"
+n_changes,51,51,supplement ssub:app-robust
+quantile_level,0.95,95%,supplement ssub:app-robust
+max_abs_normal_q95_n51,3.289054581878079,3.29,"supplement ssub:app-robust; article, robust level-shift sentence"

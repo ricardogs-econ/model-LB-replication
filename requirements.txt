@@ -1,0 +1,17 @@
+# Model LB replication package -- Python dependencies. Tested with Python 3.12.
+#
+# The exact versions that computed the results in reference/. The section scripts
+# compare what they compute with reference/: byte for byte where they can, otherwise
+# every number within the tolerance its step states: 1e-9 for most files, 1e-6 for the
+# half-power points of Table 1 (roots found to xtol = 1e-6) and 1e-7 (1 + |b|) for
+# those of Proposition 1. Other versions of numpy (and of the LAPACK/BLAS builds it
+# ships) move the last digits of least squares and eigensolvers; with these versions
+# the results are reproduced byte for byte, and newer ones are expected to agree within
+# those tolerances.
+numpy==2.3.5
+scipy==1.16.3        # exact laws (Imhof, the limit envelope), the application's tests
+numba==0.65.1        # the compiled kernel (mlb/kernel_numba.py); numba-only, no fallback
+llvmlite==0.47.0     # numba's compiler backend, the version numba 0.65.1 requires
+matplotlib==3.10.7   # Figures 1, 2 and 3
+joblib==1.5.2        # the worker processes (--jobs)
+pandas==2.3.3        # the reader of the crisis database (mlb/build_jst_crises.py), mlb/prose_numbers_grid.py

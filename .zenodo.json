@@ -1,0 +1,27 @@
+{
+  "version": "3.0.0",
+  "title": "Replication package: Calibrating Point-Optimal Unit Root Tests for Level Breaks in Small Samples: Evidence from Real Exchange Rates",
+  "description": "Replication code, data and result files for the article 'Calibrating Point-Optimal Unit Root Tests for Level Breaks in Small Samples: Evidence from Real Exchange Rates' (submitted for publication) and its online supplement. The package reproduces the paper one section at a time, with one script per section: replicate_sec_2_3.py, replicate_sec_4.py, replicate_sec_5.py and replicate_sec_6.py for Sections 2-6 of the article, replicate_sup_S1.py to replicate_sup_S5.py for Sections S1-S5 of the supplement, and replicate_all.py for every section. By default (the quick mode, about ten minutes for every section) a script recomputes the exact results and the small simulations, compares them with the result files in reference/ (byte for byte, or within the tolerance each step states, 1e-9 relative for most files), and draws the figures and renders the tables from reference/. With --full --yes it regenerates every simulation of the section from the recorded seeds and compares it with reference/; without --yes it prints the plan and the estimated time (about 3.7 hours for every section at 8 worker processes) and runs nothing. The code is in mlb/: the Numba-compiled kernel (GLS detrending with level breaks, the M statistics, the MAIC lag), the exact power envelope in finite samples and its limit, one module per computation, and a Python port of the robust level-shift tests of Harvey, Leybourne and Taylor (2010) and Carrion-i-Silvestre and Gadea (2023). python -m model_lb applies the paper's Model LB test to a user's own series with known break dates. requirements.txt lists the exact library versions that computed the results (Python 3.12). The data are derived from public sources (BIS exchange rates, World Bank consumer prices, crisis years from the Jordà-Schularick-Taylor Macrohistory Database, which is not redistributed); inputs/DATA_TERMS.md gives their sources and terms. Version 3.0.0 accompanies this paper; earlier versions (v1.x, v2.x) accompany earlier drafts of the article and do not reproduce this paper. The concept DOI 10.5281/zenodo.21229773 resolves to the latest version.",
+  "license": {
+    "id": "MIT"
+  },
+  "upload_type": "software",
+  "keywords": [
+    "unit root tests",
+    "level breaks",
+    "point-optimal tests",
+    "GLS detrending",
+    "finite-sample calibration",
+    "half-power point",
+    "real exchange rates",
+    "purchasing power parity",
+    "half-life",
+    "Monte Carlo"
+  ],
+  "creators": [
+    {
+      "name": "Gonçalves Silva, Ricardo",
+      "affiliation": "Independent researcher, São Carlos, Brazil"
+    }
+  ]
+}
